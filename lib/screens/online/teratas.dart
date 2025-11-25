@@ -11,7 +11,7 @@ class _TeratasPageOnlineState extends State<TeratasPageOnline> {
   @override
   Widget build(BuildContext context) {
     return Center(
-      child: Text("Ini Halaman Favorit"),
+      child: Text("Ini Halaman Teratas"),
     );
   }
 }

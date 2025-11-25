@@ -11,7 +11,7 @@ class _MusikPageOnlineState extends State<MusikPageOnline> {
   @override
   Widget build(BuildContext context) {
     return const Center(
-      child: Text("Ini Halaman Favorit"),
+      child: Text("Ini Halaman Musik"),
     );
   }
 }
