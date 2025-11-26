@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:yplayer/screens/offline/beranda.dart';
 
 //screens
 import 'package:yplayer/screens/online/beranda.dart';
 import 'package:yplayer/screens/online/favorit.dart';
 import 'package:yplayer/screens/online/musik.dart';
 import 'package:yplayer/screens/online/teratas.dart';
+import 'package:yplayer/screens/search/search_page.dart';
 
 
 
@@ -75,9 +77,12 @@ SingleTickerProviderStateMixin {
         title: Text(_judulTab[_tabController.index]),
         foregroundColor: Colors.white,
         backgroundColor: Colors.pink,
-        leading: const Icon(Icons.menu),
+        
         actionsPadding: const EdgeInsets.fromLTRB(0, 0, 20, 0),
-        actions: const [Icon(Icons.search)],
+        actions:  [IconButton(onPressed: () { 
+          Navigator.pop(context);
+          Navigator.push(context, MaterialPageRoute(builder: (context) => SearchPage()));
+         },icon: Icon(Icons.search),)],
         bottom: TabBar(
           //panggil controllernya coeg sekalian styling
           controller: _tabController,
@@ -92,6 +97,29 @@ SingleTickerProviderStateMixin {
             Tab(icon: Icon(Icons.star),),
             Tab(icon: Icon(Icons.trending_up),),
         ]),
+      ),
+      drawer: Drawer(
+        backgroundColor: Colors.white,
+        child: ListView(
+          children: [
+            DrawerHeader(child: Image.asset("assets/images/image.png", width: 10, height: 10,),),
+            ListTile(
+              leading: const Icon(Icons.home),
+              title: const Text("Online Mode"),
+              onTap: (){
+                Navigator.pop(context);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.home),
+              title: const Text("Offline Mode"),
+              onTap: (){
+                Navigator.of(context).push(MaterialPageRoute(builder: (context) => BerandaPageOffline()));
+              },
+            )
+          ],
+          
+        ),
       ),
       body: TabBarView(
         controller: _tabController,

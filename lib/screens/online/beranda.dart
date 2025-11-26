@@ -1,4 +1,7 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'video_player_page.dart';
 
 
 class BerandaPageOnline extends StatefulWidget {
@@ -11,6 +14,8 @@ class BerandaPageOnline extends StatefulWidget {
 class _BerandaPageOnlineState extends State<BerandaPageOnline> {
   @override
   Widget build(BuildContext context) {
-    return Center(child: Text("Ini Beranda"),);
+    return const Center(
+      child: Text("ini halaman beranda"),
+    );
   }
 }
