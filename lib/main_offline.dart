@@ -1,22 +1,20 @@
 import 'package:flutter/material.dart';
-import 'package:yplayer/main_offline.dart';
+import 'package:yplayer/main.dart';
 import 'package:yplayer/screens/offline/beranda.dart';
 
 //screens
+import 'package:yplayer/screens/offline/beranda.dart';
 import 'package:yplayer/screens/online/beranda.dart';
-import 'package:yplayer/screens/online/favorit.dart';
-import 'package:yplayer/screens/online/musik.dart';
-import 'package:yplayer/screens/online/teratas.dart';
-import 'package:yplayer/screens/search/search_page.dart';
+
 
 
 
 void main() {
-  runApp(const MyApp());
+  runApp(const MyAppOffline());
 }
 
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+class MyAppOffline extends StatelessWidget {
+  const MyAppOffline({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -26,21 +24,21 @@ class MyApp extends StatelessWidget {
         primarySwatch: Colors.pink,
         visualDensity: VisualDensity.adaptivePlatformDensity,
       ),
-      home: const HalamanUtama(),
+      home: const HalamanUtamaOffline(),
     );
   }
 }
 
 
 //halaman utama
-class HalamanUtama extends StatefulWidget {
-  const HalamanUtama({super.key});
+class HalamanUtamaOffline extends StatefulWidget {
+  const HalamanUtamaOffline({super.key});
 
   @override
-  State<HalamanUtama> createState() => _HalamanUtamaState();
+  State<HalamanUtamaOffline> createState() => _HalamanUtamaOfflineState();
 }
 
-class _HalamanUtamaState extends State<HalamanUtama> with 
+class _HalamanUtamaOfflineState extends State<HalamanUtamaOffline> with 
 SingleTickerProviderStateMixin {
   //urang bikin dulu weh fungsi supaya ketika pindah halaman pake TAB nanti si Judul menyesuaikan dengan halaman yang dibuka
   //tab Controller harusnya buat mengkontrol fungsi tab
@@ -53,7 +51,7 @@ SingleTickerProviderStateMixin {
   @override
   void initState(){
     super.initState(); 
-  _tabController = TabController(length: 4, vsync: this);
+  _tabController = TabController(length: 2, vsync: this);
   //tambahkan listener buat mendeteksi kalo tabnya berubah
   _tabController.addListener((){
     if(!mounted) return;
@@ -78,12 +76,6 @@ SingleTickerProviderStateMixin {
         title: Text(_judulTab[_tabController.index]),
         foregroundColor: Colors.white,
         backgroundColor: Colors.pink,
-        
-        actionsPadding: const EdgeInsets.fromLTRB(0, 0, 20, 0),
-        actions:  [IconButton(onPressed: () { 
-          Navigator.pop(context);
-          Navigator.push(context, MaterialPageRoute(builder: (context) => SearchPage()));
-         },icon: Icon(Icons.search),)],
         bottom: TabBar(
           //panggil controllernya coeg sekalian styling
           controller: _tabController,
@@ -95,8 +87,6 @@ SingleTickerProviderStateMixin {
           tabs: const[
             Tab(icon: Icon(Icons.home),),
             Tab(icon: Icon(Icons.music_note),),
-            Tab(icon: Icon(Icons.star),),
-            Tab(icon: Icon(Icons.trending_up),),
         ]),
       ),
       drawer: Drawer(
@@ -109,6 +99,7 @@ SingleTickerProviderStateMixin {
               title: const Text("Online Mode"),
               onTap: (){
                 Navigator.pop(context);
+                Navigator.push(context, MaterialPageRoute(builder: (context) => HalamanUtama()));
               },
             ),
             ListTile(
@@ -116,7 +107,6 @@ SingleTickerProviderStateMixin {
               title: const Text("Offline Mode"),
               onTap: (){
                 Navigator.pop(context);
-                Navigator.push(context, MaterialPageRoute(builder: (context) => HalamanUtamaOffline()));
               },
             )
           ],
@@ -126,10 +116,7 @@ SingleTickerProviderStateMixin {
       body: TabBarView(
         controller: _tabController,
         children: const[
-          BerandaPageOnline(),
-          MusikPageOnline(),
-          FavoritPageOnline(),
-          TeratasPageOnline(),
+          BerandaPageOffline(),
         ],
       ),
     );
