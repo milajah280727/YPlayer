@@ -3,9 +3,9 @@ import 'package:yplayer/main.dart';
 import 'package:yplayer/screens/offline/beranda.dart';
 
 //screens
-import 'package:yplayer/screens/offline/beranda.dart';
+
 import 'package:yplayer/screens/offline/playlist_page_offline.dart';
-import 'package:yplayer/screens/online/beranda.dart';
+
 
 
 

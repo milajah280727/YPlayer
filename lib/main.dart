@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:yplayer/main_offline.dart';
-import 'package:yplayer/screens/offline/beranda.dart';
 
 //screens
 import 'package:yplayer/screens/online/beranda.dart';
