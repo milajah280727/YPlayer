@@ -4,6 +4,7 @@ import 'package:yplayer/screens/offline/beranda.dart';
 
 //screens
 import 'package:yplayer/screens/offline/beranda.dart';
+import 'package:yplayer/screens/offline/playlist_page_offline.dart';
 import 'package:yplayer/screens/online/beranda.dart';
 
 
@@ -45,7 +46,7 @@ SingleTickerProviderStateMixin {
   late TabController _tabController;
 
   //ini buat daftar Judul supaya bisa menyesuaikan dengan halaman yang dibuka
-  final List<String> _judulTab = ["Beranda", "Musik", "Favorit", "Teratas"];
+  final List<String> _judulTab = ["Beranda", "Playlist",];
 
 
   @override
@@ -86,7 +87,7 @@ SingleTickerProviderStateMixin {
           //ini tabnya
           tabs: const[
             Tab(icon: Icon(Icons.home),),
-            Tab(icon: Icon(Icons.music_note),),
+            Tab(icon: Icon(Icons.playlist_add_check),),
         ]),
       ),
       drawer: Drawer(
@@ -117,6 +118,7 @@ SingleTickerProviderStateMixin {
         controller: _tabController,
         children: const[
           BerandaPageOffline(),
+          PlaylistPageOffline()
         ],
       ),
     );
