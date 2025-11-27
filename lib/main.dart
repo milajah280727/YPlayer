@@ -111,7 +111,7 @@ SingleTickerProviderStateMixin {
               },
             ),
             ListTile(
-              leading: const Icon(Icons.home),
+              leading: const Icon(Icons.bookmark),
               title: const Text("Offline Mode"),
               onTap: (){
                 Navigator.pop(context);
