@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:yplayer/main_offline.dart';
+import 'package:yplayer/providers/search_provider.dart';
+import 'package:provider/provider.dart';
 
 //screens
 import 'package:yplayer/screens/online/beranda.dart';
@@ -8,10 +10,13 @@ import 'package:yplayer/screens/online/musik.dart';
 import 'package:yplayer/screens/online/teratas.dart';
 import 'package:yplayer/screens/search/search_page.dart';
 
-
-
 void main() {
-  runApp(const MyApp());
+  runApp(
+    ChangeNotifierProvider(
+      create: (context) => SearchProvider(),
+      child: const MyApp(),
+    ),
+  );
 }
 
 class MyApp extends StatelessWidget {
@@ -80,9 +85,10 @@ SingleTickerProviderStateMixin {
         
         actionsPadding: const EdgeInsets.fromLTRB(0, 0, 20, 0),
         actions:  [IconButton(onPressed: () { 
-          Navigator.pop(context);
-          Navigator.push(context, MaterialPageRoute(builder: (context) => SearchPage()));
-         },icon: Icon(Icons.search),)],
+          // PERBAIKAN: Hapus Navigator.pop(context) agar tidak kembali ke halaman sebelumnya
+          // karena ini adalah halaman utama online. Langsung push saja.
+          Navigator.push(context, MaterialPageRoute(builder: (context) => const SearchPage()));
+         },icon: const Icon(Icons.search),)],
         bottom: TabBar(
           //panggil controllernya coeg sekalian styling
           controller: _tabController,
@@ -102,7 +108,7 @@ SingleTickerProviderStateMixin {
         backgroundColor: Colors.white,
         child: ListView(
           children: [
-            DrawerHeader(child: Image.asset("assets/images/image.png", width: 10, height: 10,),),
+            DrawerHeader(child: Image.asset("assets/images/image.png", width: 10, height: 10,)),
             ListTile(
               leading: const Icon(Icons.home),
               title: const Text("Online Mode"),
@@ -114,8 +120,8 @@ SingleTickerProviderStateMixin {
               leading: const Icon(Icons.bookmark),
               title: const Text("Offline Mode"),
               onTap: (){
-                Navigator.pop(context);
-                Navigator.push(context, MaterialPageRoute(builder: (context) => HalamanUtamaOffline()));
+                
+                Navigator.push(context, MaterialPageRoute(builder: (context) => const HalamanUtamaOffline()));
               },
             )
           ],

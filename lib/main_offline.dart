@@ -100,7 +100,7 @@ SingleTickerProviderStateMixin {
               title: const Text("Online Mode"),
               onTap: (){
                 Navigator.pop(context);
-                Navigator.push(context, MaterialPageRoute(builder: (context) => HalamanUtama()));
+                Navigator.pushAndRemoveUntil(context, MaterialPageRoute(builder: (context) => HalamanUtama()), (route) => false);
               },
             ),
             ListTile(
