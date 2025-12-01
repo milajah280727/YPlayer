@@ -1,19 +1,26 @@
-import 'package:flutter/material.dart';
-import 'package:yplayer/main_offline.dart';
-import 'package:yplayer/providers/search_provider.dart';
-import 'package:provider/provider.dart';
+// lib/main.dart
 
-//screens
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:yplayer/providers/search_provider.dart';
+import 'package:yplayer/providers/player_provider.dart'; // PASTIKAN IMPORT INI BENAR
+
+// ... import screens lainnya
 import 'package:yplayer/screens/online/beranda.dart';
 import 'package:yplayer/screens/online/favorit.dart';
 import 'package:yplayer/screens/online/musik.dart';
 import 'package:yplayer/screens/online/teratas.dart';
 import 'package:yplayer/screens/search/search_page.dart';
+import 'package:yplayer/widgets/mini_player_widget.dart';
 
 void main() {
   runApp(
-    ChangeNotifierProvider(
-      create: (context) => SearchProvider(),
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (context) => SearchProvider()),
+        // PASTIKAN ANDA MENGGUNAKAN PlayerProvider YANG SUDAH ADA
+        ChangeNotifierProvider(create: (context) => PlayerProvider()),
+      ],
       child: const MyApp(),
     ),
   );
@@ -35,8 +42,7 @@ class MyApp extends StatelessWidget {
   }
 }
 
-
-//halaman utama
+// ... class HalamanUtama tidak perlu diubah, tetap gunakan yang lama
 class HalamanUtama extends StatefulWidget {
   const HalamanUtama({super.key});
 
@@ -44,97 +50,96 @@ class HalamanUtama extends StatefulWidget {
   State<HalamanUtama> createState() => _HalamanUtamaState();
 }
 
-class _HalamanUtamaState extends State<HalamanUtama> with 
-SingleTickerProviderStateMixin {
-  //urang bikin dulu weh fungsi supaya ketika pindah halaman pake TAB nanti si Judul menyesuaikan dengan halaman yang dibuka
-  //tab Controller harusnya buat mengkontrol fungsi tab
+class _HalamanUtamaState extends State<HalamanUtama> with SingleTickerProviderStateMixin {
   late TabController _tabController;
-
-  //ini buat daftar Judul supaya bisa menyesuaikan dengan halaman yang dibuka
   final List<String> _judulTab = ["Beranda", "Musik", "Favorit", "Teratas"];
 
-
   @override
-  void initState(){
-    super.initState(); 
-  _tabController = TabController(length: 4, vsync: this);
-  //tambahkan listener buat mendeteksi kalo tabnya berubah
-  _tabController.addListener((){
-    if(!mounted) return;
-    setState(() {
-      
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: 4, vsync: this);
+    _tabController.addListener(() {
+      if (!mounted) return;
+      setState(() {});
     });
-  });
   }
 
   @override
-  //dispose supaya tidak ada memory leak
-  void dispose(){
+  void dispose() {
     _tabController.dispose();
     super.dispose();
-}
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        //styling dulu gengs
         title: Text(_judulTab[_tabController.index]),
         foregroundColor: Colors.white,
         backgroundColor: Colors.pink,
-        
         actionsPadding: const EdgeInsets.fromLTRB(0, 0, 20, 0),
-        actions:  [IconButton(onPressed: () { 
-          // PERBAIKAN: Hapus Navigator.pop(context) agar tidak kembali ke halaman sebelumnya
-          // karena ini adalah halaman utama online. Langsung push saja.
-          Navigator.push(context, MaterialPageRoute(builder: (context) => const SearchPage()));
-         },icon: const Icon(Icons.search),)],
+        actions: [
+          IconButton(
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const SearchPage()),
+              );
+            },
+            icon: const Icon(Icons.search),
+          )
+        ],
         bottom: TabBar(
-          //panggil controllernya coeg sekalian styling
           controller: _tabController,
           labelColor: Colors.black,
           unselectedLabelColor: Colors.white,
           indicatorColor: Colors.black,
-
-          //ini tabnya
-          tabs: const[
-            Tab(icon: Icon(Icons.home),),
-            Tab(icon: Icon(Icons.music_note),),
-            Tab(icon: Icon(Icons.star),),
-            Tab(icon: Icon(Icons.trending_up),),
-        ]),
+          tabs: const [
+            Tab(icon: Icon(Icons.home)),
+            Tab(icon: Icon(Icons.music_note)),
+            Tab(icon: Icon(Icons.star)),
+            Tab(icon: Icon(Icons.trending_up)),
+          ],
+        ),
       ),
       drawer: Drawer(
-        backgroundColor: Colors.white,
         child: ListView(
           children: [
-            DrawerHeader(child: Image.asset("assets/images/image.png", width: 10, height: 10,)),
+            DrawerHeader(child: Image.asset("assets/images/image.png")),
             ListTile(
               leading: const Icon(Icons.home),
               title: const Text("Online Mode"),
-              onTap: (){
+              onTap: () {
                 Navigator.pop(context);
               },
             ),
             ListTile(
               leading: const Icon(Icons.bookmark),
               title: const Text("Offline Mode"),
-              onTap: (){
-                
-                Navigator.push(context, MaterialPageRoute(builder: (context) => const HalamanUtamaOffline()));
+              onTap: () {
+                // Navigator.push(context, MaterialPageRoute(builder: (context) => const HalamanUtamaOffline()));
               },
             )
           ],
-          
         ),
       ),
-      body: TabBarView(
-        controller: _tabController,
-        children: const[
-          BerandaPageOnline(),
-          MusikPageOnline(),
-          FavoritPageOnline(),
-          TeratasPageOnline(),
+      body: Stack(
+        children: [
+          TabBarView(
+            controller: _tabController,
+            children: const [
+              BerandaPageOnline(),
+              MusikPageOnline(),
+              FavoritPageOnline(),
+              TeratasPageOnline(),
+            ],
+          ),
+          const Positioned(
+            left: 0,
+            right: 0,
+            bottom: 0,
+            child: MiniPlayerWidget(),
+          ),
         ],
       ),
     );

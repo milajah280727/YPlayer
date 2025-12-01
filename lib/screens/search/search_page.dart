@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:yplayer/main.dart';
 import 'package:yplayer/providers/search_provider.dart';
 import 'package:yplayer/screens/search/search_page_result.dart';
 
@@ -59,8 +60,8 @@ class _SearchPageState extends State<SearchPage> {
         automaticallyImplyLeading: false,
         leading: IconButton(
           onPressed: () {
-            Navigator.pop(context);
-            Navigator.push(context, MaterialPageRoute(builder: (context) => const SearchPage()));
+            
+            Navigator.pushAndRemoveUntil(context, MaterialPageRoute(builder: (context) => HalamanUtama()), (route) => false);
           },
           icon: const Icon(Icons.arrow_back),
         ),
