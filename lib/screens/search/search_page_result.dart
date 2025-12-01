@@ -28,7 +28,7 @@ class _SearchPageResultState extends State<SearchPageResult> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.query),
+        title: Text('Hasil Pencarian: ${widget.query}'),
         backgroundColor: Colors.pink,
         foregroundColor: Colors.white,
       ),
