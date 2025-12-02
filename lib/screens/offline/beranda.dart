@@ -16,7 +16,7 @@ class _BerandaPageOfflineState extends State<BerandaPageOffline> with SingleTick
   @override
   Widget build(BuildContext context) {
     return const Center(
-      child: Text("ini halaman beranda offline yang isinya musik dan video yang sudah di download"),
+      child: Text("ini halaman beranda offline"),
     );
   }
   

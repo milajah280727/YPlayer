@@ -2,10 +2,10 @@
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:yplayer/main_offline.dart';
 import 'package:yplayer/providers/search_provider.dart';
-import 'package:yplayer/providers/player_provider.dart'; // PASTIKAN IMPORT INI BENAR
+import 'package:yplayer/providers/player_provider.dart'; 
 
-// ... import screens lainnya
 import 'package:yplayer/screens/online/beranda.dart';
 import 'package:yplayer/screens/online/favorit.dart';
 import 'package:yplayer/screens/online/musik.dart';
@@ -18,7 +18,6 @@ void main() {
     MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (context) => SearchProvider()),
-        // PASTIKAN ANDA MENGGUNAKAN PlayerProvider YANG SUDAH ADA
         ChangeNotifierProvider(create: (context) => PlayerProvider()),
       ],
       child: const MyApp(),
@@ -42,7 +41,6 @@ class MyApp extends StatelessWidget {
   }
 }
 
-// ... class HalamanUtama tidak perlu diubah, tetap gunakan yang lama
 class HalamanUtama extends StatefulWidget {
   const HalamanUtama({super.key});
 
@@ -117,7 +115,11 @@ class _HalamanUtamaState extends State<HalamanUtama> with SingleTickerProviderSt
               leading: const Icon(Icons.bookmark),
               title: const Text("Offline Mode"),
               onTap: () {
-                // Navigator.push(context, MaterialPageRoute(builder: (context) => const HalamanUtamaOffline()));
+                Navigator.pushAndRemoveUntil(
+                  context, 
+                  MaterialPageRoute(builder: (context) => const HalamanUtamaOffline()), 
+                  (route) => false
+                );
               },
             )
           ],
