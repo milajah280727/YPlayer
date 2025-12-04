@@ -52,25 +52,43 @@ class MiniPlayerWidget extends StatelessWidget {
               ),
               child: Row(
                 children: [
+                  // ==================== PERUBAHAN 7: THUMBNAIL DI MINIPLAYER ====================
                   ClipRRect(
                     borderRadius: BorderRadius.circular(4),
-                    child: Image.network(
-                      'https://i.ytimg.com/vi/${player.currentVideoId}/mqdefault.jpg',
-                      width: 50,
-                      height: 50,
-                      fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => Container(
-                        width: 50,
-                        height: 50,
-                        color: Colors.grey[800],
-                        child: const Icon(
-                          Icons.music_video,
-                          color: Colors.white70,
-                          size: 24,
-                        ),
-                      ),
-                    ),
+                    child: player.isLoadingNewSong
+                        ? Container(
+                            width: 50,
+                            height: 50,
+                            color: Colors.grey[800],
+                            child: const Center(
+                              child: SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(
+                                  color: Colors.white,
+                                  strokeWidth: 2.0,
+                                ),
+                              ),
+                            ),
+                          )
+                        : Image.network(
+                            'https://i.ytimg.com/vi/${player.currentVideoId}/mqdefault.jpg',
+                            width: 50,
+                            height: 50,
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, __, ___) => Container(
+                              width: 50,
+                              height: 50,
+                              color: Colors.grey[800],
+                              child: const Icon(
+                                Icons.music_video,
+                                color: Colors.white70,
+                                size: 24,
+                              ),
+                            ),
+                          ),
                   ),
+                  // ==================== AKHIR PERUBAHAN 7 ====================
                   const SizedBox(width: 8),
                   Expanded(
                     child: Column(
@@ -108,16 +126,25 @@ class MiniPlayerWidget extends StatelessWidget {
                       onPressed: () => player.switchToVideo(),
                       tooltip: 'Tampilkan Video',
                     ),
-                  IconButton(
-                    icon: Icon(
-                      player.isPlaying
-                          ? Icons.pause_circle_filled
-                          : Icons.play_circle_filled,
-                      color: Colors.white,
-                      size: 28,
-                    ),
-                    onPressed: player.togglePlayPause,
-                  ),
+                  player.isLoadingNewSong
+                      ? const SizedBox(
+                          width: 28,
+                          height: 28,
+                          child: CircularProgressIndicator(
+                            color: Colors.white,
+                            strokeWidth: 3.0,
+                          ),
+                        )
+                      : IconButton(
+                          icon: Icon(
+                            player.isPlaying
+                                ? Icons.pause_circle_filled
+                                : Icons.play_circle_filled,
+                            color: Colors.white,
+                            size: 28,
+                          ),
+                          onPressed: player.togglePlayPause,
+                        ),
                   IconButton(
                     icon: const Icon(
                       Icons.skip_next,
@@ -187,15 +214,33 @@ class MiniPlayerWidget extends StatelessWidget {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
+                    // ==================== PERUBAHAN 8: THUMBNAIL DI FULL PLAYER ====================
                     ClipRRect(
                       borderRadius: BorderRadius.circular(12),
-                      child: Image.network(
-                        'https://i.ytimg.com/vi/${player.currentVideoId}/hqdefault.jpg',
-                        width: 250,
-                        height: 250,
-                        fit: BoxFit.cover,
-                      ),
+                      child: player.isLoadingNewSong
+                          ? Container(
+                              width: 250,
+                              height: 250,
+                              color: Colors.grey[900],
+                              child: const Center(
+                                child: SizedBox(
+                                  width: 50,
+                                  height: 50,
+                                  child: CircularProgressIndicator(
+                                    color: Colors.white,
+                                    strokeWidth: 4.0,
+                                  ),
+                                ),
+                              ),
+                            )
+                          : Image.network(
+                              'https://i.ytimg.com/vi/${player.currentVideoId}/hqdefault.jpg',
+                              width: 250,
+                              height: 250,
+                              fit: BoxFit.cover,
+                            ),
                     ),
+                    // ==================== AKHIR PERUBAHAN 8 ====================
                     const SizedBox(height: 10),
                     Text(
                       player.currentTitle ?? 'Loading...',
@@ -341,16 +386,25 @@ class MiniPlayerWidget extends StatelessWidget {
           iconSize: 40,
           onPressed: player.skipToPrevious,
         ),
-        IconButton(
-          icon: Icon(
-            player.isPlaying
-                ? Icons.pause_circle_filled
-                : Icons.play_circle_filled,
-            color: Colors.white,
-          ),
-          iconSize: 64,
-          onPressed: player.togglePlayPause,
-        ),
+        player.isLoadingNewSong
+            ? const SizedBox(
+                width: 64,
+                height: 64,
+                child: CircularProgressIndicator(
+                  color: Colors.white,
+                  strokeWidth: 4.0,
+                ),
+              )
+            : IconButton(
+                icon: Icon(
+                  player.isPlaying
+                      ? Icons.pause_circle_filled
+                      : Icons.play_circle_filled,
+                  color: Colors.white,
+                ),
+                iconSize: 64,
+                onPressed: player.togglePlayPause,
+              ),
         IconButton(
           icon: const Icon(Icons.skip_next, color: Colors.white),
           iconSize: 40,
