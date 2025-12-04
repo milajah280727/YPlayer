@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:yplayer/main_offline.dart';
 import 'package:yplayer/providers/search_provider.dart';
-import 'package:yplayer/providers/player_provider.dart'; 
+import 'package:yplayer/providers/player_provider.dart';
 
 import 'package:yplayer/screens/online/beranda.dart';
 import 'package:yplayer/screens/online/favorit.dart';
@@ -18,7 +18,9 @@ void main() {
     MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (context) => SearchProvider()),
-        ChangeNotifierProvider(create: (context) => PlayerProvider()),
+        ChangeNotifierProvider(
+          create: (context) => PlayerProvider(audioHandler: null),
+        ),
       ],
       child: const MyApp(),
     ),
@@ -48,7 +50,8 @@ class HalamanUtama extends StatefulWidget {
   State<HalamanUtama> createState() => _HalamanUtamaState();
 }
 
-class _HalamanUtamaState extends State<HalamanUtama> with SingleTickerProviderStateMixin {
+class _HalamanUtamaState extends State<HalamanUtama>
+    with SingleTickerProviderStateMixin {
   late TabController _tabController;
   final List<String> _judulTab = ["Beranda", "Musik", "Favorit", "Teratas"];
 
@@ -85,7 +88,7 @@ class _HalamanUtamaState extends State<HalamanUtama> with SingleTickerProviderSt
               );
             },
             icon: const Icon(Icons.search),
-          )
+          ),
         ],
         bottom: TabBar(
           controller: _tabController,
@@ -116,12 +119,14 @@ class _HalamanUtamaState extends State<HalamanUtama> with SingleTickerProviderSt
               title: const Text("Offline Mode"),
               onTap: () {
                 Navigator.pushAndRemoveUntil(
-                  context, 
-                  MaterialPageRoute(builder: (context) => const HalamanUtamaOffline()), 
-                  (route) => false
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const HalamanUtamaOffline(),
+                  ),
+                  (route) => false,
                 );
               },
-            )
+            ),
           ],
         ),
       ),
@@ -136,7 +141,7 @@ class _HalamanUtamaState extends State<HalamanUtama> with SingleTickerProviderSt
               TeratasPageOnline(),
             ],
           ),
-          const Positioned(
+           Positioned(
             left: 0,
             right: 0,
             bottom: 0,

@@ -11,13 +11,11 @@ class BerandaPageOffline extends StatefulWidget {
 }
 
 class _BerandaPageOfflineState extends State<BerandaPageOffline> with SingleTickerProviderStateMixin{
-
-
-  @override
+@override
   Widget build(BuildContext context) {
+    // HAPUS Scaffold, langsung kembalikan widget utamanya
     return const Center(
-      child: Text("ini halaman beranda offline"),
+      child: Text("Ini halaman playlist offline"),
     );
   }
-  
 }
