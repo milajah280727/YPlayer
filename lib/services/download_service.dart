@@ -9,7 +9,7 @@ import 'package:device_info_plus/device_info_plus.dart';
 
 class DownloadService {
   static final Dio _dio = Dio();
-  static const String _baseUrl = 'https://yt-dlp-server-yplayer.vercel.app';
+  static const String _baseUrl = 'http://192.168.1.10:8000';
 
   // Fungsi untuk memeriksa dan meminta izin penyimpanan
   static Future<bool> requestStoragePermission() async {

@@ -52,7 +52,6 @@ class MiniPlayerWidget extends StatelessWidget {
               ),
               child: Row(
                 children: [
-                  // ==================== PERUBAHAN 7: THUMBNAIL DI MINIPLAYER ====================
                   ClipRRect(
                     borderRadius: BorderRadius.circular(4),
                     child: player.isLoadingNewSong
@@ -88,7 +87,6 @@ class MiniPlayerWidget extends StatelessWidget {
                             ),
                           ),
                   ),
-                  // ==================== AKHIR PERUBAHAN 7 ====================
                   const SizedBox(width: 8),
                   Expanded(
                     child: Column(
@@ -126,25 +124,20 @@ class MiniPlayerWidget extends StatelessWidget {
                       onPressed: () => player.switchToVideo(),
                       tooltip: 'Tampilkan Video',
                     ),
-                  player.isLoadingNewSong
-                      ? const SizedBox(
-                          width: 28,
-                          height: 28,
-                          child: CircularProgressIndicator(
-                            color: Colors.white,
-                            strokeWidth: 3.0,
-                          ),
-                        )
-                      : IconButton(
-                          icon: Icon(
-                            player.isPlaying
-                                ? Icons.pause_circle_filled
-                                : Icons.play_circle_filled,
-                            color: Colors.white,
-                            size: 28,
-                          ),
-                          onPressed: player.togglePlayPause,
-                        ),
+                  // ==================== PERUBAHAN: TOMBOL PLAY/PAUSE DI MINIPLAYER ====================
+                  IconButton(
+                    icon: Icon(
+                      player.isPlaying
+                          ? Icons.pause_circle_filled
+                          : Icons.play_circle_filled,
+                      color: player.isLoadingNewSong ? Colors.grey : Colors.white,
+                      size: 28,
+                    ),
+                    onPressed: player.isLoadingNewSong
+                        ? null // Jika sedang loading, tombol dinonaktifkan
+                        : player.togglePlayPause,
+                  ),
+                  // ==================== AKHIR PERUBAHAN ====================
                   IconButton(
                     icon: const Icon(
                       Icons.skip_next,
@@ -214,7 +207,6 @@ class MiniPlayerWidget extends StatelessWidget {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    // ==================== PERUBAHAN 8: THUMBNAIL DI FULL PLAYER ====================
                     ClipRRect(
                       borderRadius: BorderRadius.circular(12),
                       child: player.isLoadingNewSong
@@ -240,7 +232,6 @@ class MiniPlayerWidget extends StatelessWidget {
                               fit: BoxFit.cover,
                             ),
                     ),
-                    // ==================== AKHIR PERUBAHAN 8 ====================
                     const SizedBox(height: 10),
                     Text(
                       player.currentTitle ?? 'Loading...',
@@ -386,25 +377,20 @@ class MiniPlayerWidget extends StatelessWidget {
           iconSize: 40,
           onPressed: player.skipToPrevious,
         ),
-        player.isLoadingNewSong
-            ? const SizedBox(
-                width: 64,
-                height: 64,
-                child: CircularProgressIndicator(
-                  color: Colors.white,
-                  strokeWidth: 4.0,
-                ),
-              )
-            : IconButton(
-                icon: Icon(
-                  player.isPlaying
-                      ? Icons.pause_circle_filled
-                      : Icons.play_circle_filled,
-                  color: Colors.white,
-                ),
-                iconSize: 64,
-                onPressed: player.togglePlayPause,
-              ),
+        // ==================== PERUBAHAN: TOMBOL PLAY/PAUSE DI FULL PLAYER ====================
+        IconButton(
+          icon: Icon(
+            player.isPlaying
+                ? Icons.pause_circle_filled
+                : Icons.play_circle_filled,
+            color: player.isLoadingNewSong ? Colors.grey : Colors.white,
+          ),
+          iconSize: 64,
+          onPressed: player.isLoadingNewSong
+              ? null // Jika sedang loading, tombol dinonaktifkan
+              : player.togglePlayPause,
+        ),
+        // ==================== AKHIR PERUBAHAN ====================
         IconButton(
           icon: const Icon(Icons.skip_next, color: Colors.white),
           iconSize: 40,

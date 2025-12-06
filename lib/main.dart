@@ -8,6 +8,7 @@ import 'package:yplayer/providers/player_provider.dart';
 
 import 'package:yplayer/screens/online/beranda.dart';
 import 'package:yplayer/screens/online/favorit.dart';
+// ignore: unused_import
 import 'package:yplayer/screens/online/musik.dart';
 import 'package:yplayer/screens/online/teratas.dart';
 import 'package:yplayer/screens/search/search_page.dart';
@@ -136,7 +137,7 @@ class _HalamanUtamaState extends State<HalamanUtama>
             controller: _tabController,
             children: const [
               BerandaPageOnline(),
-              MusikPageOnline(),
+              // MusikPageOnline(),
               FavoritPageOnline(),
               TeratasPageOnline(),
             ],

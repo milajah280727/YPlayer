@@ -32,7 +32,7 @@ class _BerandaPageOnlineState extends State<BerandaPageOnline> {
     });
 
     try {
-      final results = await YTDLService.search('ReoNa Aima');
+      final results = await YTDLService.search('multo');
       setState(() {
         _trendingSongs = results.take(20).toList();
         _isLoading = false;
