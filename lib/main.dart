@@ -1,5 +1,3 @@
-// lib/main.dart
-
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:yplayer/main_offline.dart';
@@ -8,7 +6,6 @@ import 'package:yplayer/providers/player_provider.dart';
 
 import 'package:yplayer/screens/online/beranda.dart';
 import 'package:yplayer/screens/online/favorit.dart';
-// ignore: unused_import
 import 'package:yplayer/screens/online/musik.dart';
 import 'package:yplayer/screens/online/teratas.dart';
 import 'package:yplayer/screens/search/search_page.dart';
@@ -74,36 +71,10 @@ class _HalamanUtamaState extends State<HalamanUtama>
 
   @override
   Widget build(BuildContext context) {
+    // Ambil padding untuk menghindari area sistem
+    final padding = MediaQuery.of(context).padding;
+    
     return Scaffold(
-      appBar: AppBar(
-        title: Text(_judulTab[_tabController.index]),
-        foregroundColor: Colors.white,
-        backgroundColor: Colors.pink,
-        actionsPadding: const EdgeInsets.fromLTRB(0, 0, 20, 0),
-        actions: [
-          IconButton(
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => const SearchPage()),
-              );
-            },
-            icon: const Icon(Icons.search),
-          ),
-        ],
-        bottom: TabBar(
-          controller: _tabController,
-          labelColor: Colors.black,
-          unselectedLabelColor: Colors.white,
-          indicatorColor: Colors.black,
-          tabs: const [
-            Tab(icon: Icon(Icons.home)),
-            Tab(icon: Icon(Icons.music_note)),
-            Tab(icon: Icon(Icons.star)),
-            Tab(icon: Icon(Icons.trending_up)),
-          ],
-        ),
-      ),
       drawer: Drawer(
         child: ListView(
           children: [
@@ -133,22 +104,93 @@ class _HalamanUtamaState extends State<HalamanUtama>
       ),
       body: Stack(
         children: [
-          TabBarView(
-            controller: _tabController,
-            children: const [
-              BerandaPageOnline(),
-              // MusikPageOnline(),
-              FavoritPageOnline(),
-              TeratasPageOnline(),
+          Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // AppBar Kustom tanpa SafeArea
+              _buildCustomAppBar(context, padding),
+              // TabBarView dengan padding di bagian bawah
+              Expanded(
+                child: Padding(
+                  padding: EdgeInsets.only(bottom: padding.bottom),
+                  child: TabBarView(
+                    controller: _tabController,
+                    children: const [
+                      BerandaPageOnline(),
+                      MusikPageOnline(),
+                      FavoritPageOnline(),
+                      TeratasPageOnline(),
+                    ],
+                  ),
+                ),
+              ),
             ],
           ),
-           Positioned(
+          const Positioned(
             left: 0,
             right: 0,
             bottom: 0,
             child: MiniPlayerWidget(),
           ),
         ],
+      ),
+    );
+  }
+
+  // Widget untuk membangun AppBar kustom
+  Widget _buildCustomAppBar(BuildContext context, EdgeInsets padding) {
+    return Container(
+      decoration: const BoxDecoration(
+        color: Colors.pink,
+      ),
+      // Gunakan Padding untuk menggantikan SafeArea
+      child: Padding(
+        padding: EdgeInsets.only(top: padding.top, left: 8.0, right: 8.0),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Bagian Atas (Judul dan Aksi)
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                IconButton(
+                  icon: const Icon(Icons.menu, color: Colors.white),
+                  onPressed: () => Scaffold.of(context).openDrawer(),
+                ),
+                Text(
+                  _judulTab[_tabController.index],
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.search, color: Colors.white),
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => const SearchPage()),
+                    );
+                  },
+                ),
+              ],
+            ),
+            // TabBar
+            TabBar(
+              controller: _tabController,
+              labelColor: Colors.black,
+              unselectedLabelColor: Colors.white,
+              indicatorColor: Colors.black,
+              tabs: const [
+                Tab(icon: Icon(Icons.home)),
+                Tab(icon: Icon(Icons.music_note)),
+                Tab(icon: Icon(Icons.star)),
+                Tab(icon: Icon(Icons.trending_up)),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }

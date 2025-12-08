@@ -4,66 +4,90 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 class ApiService {
-  static const String _baseUrl = 'http://localhost:8000'; // Ganti dengan URL backend Anda
-  
+  // Hapus slash di akhir untuk mencegah double slash //
+  static const String _baseUrl = 'https://proceedings-pound-farm-get.trycloudflare.com';
+
+  // --- Endpoint untuk Mendapatkan Informasi Video ---
+  // Server: @app.get("/info")
   static Future<Map<String, dynamic>> getVideoInfo(String url) async {
     try {
-      final response = await http.post(
-        Uri.parse('$_baseUrl/info'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({'url': url}),
-      );
+      final uri = Uri.parse('$_baseUrl/info').replace(queryParameters: {'url': url});
+      
+      final response = await http.get(uri);
       
       if (response.statusCode == 200) {
         return jsonDecode(response.body);
       } else {
-        throw Exception('Failed to load video info: ${response.statusCode}');
+        throw Exception('Gagal memuat info video: ${response.statusCode} - ${response.body}');
       }
     } catch (e) {
-      throw Exception('Error fetching video info: $e');
+      throw Exception('Error mengambil info video: $e');
     }
   }
   
-  static Future<List<Map<String, dynamic>>> getVideoFormats(String url) async {
+  // --- Endpoint untuk Mendapatkan Daftar Format/Resolusi ---
+  // Server: @app.get("/get-formats")
+  static Future<List<String>> getVideoFormats(String url) async {
     try {
-      final response = await http.post(
-        Uri.parse('$_baseUrl/formats'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({'url': url}),
-      );
+      final uri = Uri.parse('$_baseUrl/get-formats').replace(queryParameters: {'url': url});
+      
+      final response = await http.get(uri);
       
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        return List<Map<String, dynamic>>.from(data['formats']);
+        // Server mengembalikan {"formats": ["720", "1080", ...]}
+        return List<String>.from(data['formats']);
       } else {
-        throw Exception('Failed to load video formats: ${response.statusCode}');
+        throw Exception('Gagal memuat format video: ${response.statusCode} - ${response.body}');
       }
     } catch (e) {
-      throw Exception('Error fetching video formats: $e');
+      throw Exception('Error mengambil format video: $e');
     }
   }
-  
-  static Future<String> downloadVideo(String url, String quality, {String? formatId}) async {
+
+  // --- Endpoint untuk Mendapatkan URL Streaming Audio ---
+  // Server: @app.get("/get-audio-stream-url")
+  static Future<String> getAudioStreamUrl(String url) async {
     try {
-      final Map<String, dynamic> body = {'url': url, 'quality': quality};
-      if (formatId != null) {
-        body['format_id'] = formatId;
-      }
+      final uri = Uri.parse('$_baseUrl/get-audio-stream-url').replace(queryParameters: {'url': url});
       
-      final response = await http.post(
-        Uri.parse('$_baseUrl/download'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode(body),
-      );
+      final response = await http.get(uri);
       
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        return data['stream_url']; // URL untuk streaming
+        return data['stream_url'];
       } else {
-        throw Exception('Failed to start download: ${response.statusCode}');
+        throw Exception('Gagal mendapatkan URL stream audio: ${response.statusCode}');
       }
     } catch (e) {
-      throw Exception('Error starting download: $e');
+      throw Exception('Error mengambil URL stream audio: $e');
+    }
+  }
+
+  // --- Endpoint untuk Memulai Unduhan Video ---
+  // Server: @app.post("/download")
+  // Meskipun metodenya POST, server Anda tetap menggunakan Query() untuk parameter
+  static Future<String> getDownloadVideoUrl(String url, String quality) async {
+    try {
+      final uri = Uri.parse('$_baseUrl/download').replace(queryParameters: {
+        'url': url,
+        'quality': quality,
+      });
+      
+      final response = await http.post(uri);
+      
+      if (response.statusCode == 200) {
+        // Endpoint ini di server Anda mengembalikan StreamingResponse untuk download langsung,
+        // bukan JSON. Jadi, Anda tidak bisa memanggilnya seperti ini untuk mendapatkan URL.
+        // Anda perlu menangani streaming langsung di Flutter.
+        // Atau, jika Anda hanya ingin URL streaming, gunakan endpoint lain.
+        // Untuk saat ini, kita asumsikan Anda akan menangani download secara berbeda.
+        throw Exception('Endpoint /download untuk streaming langsung, bukan mengambil URL. Gunakan fungsi download di DownloadService.');
+      } else {
+        throw Exception('Gagal memulai unduhan video: ${response.statusCode}');
+      }
+    } catch (e) {
+      throw Exception('Error memulai unduhan video: $e');
     }
   }
 }

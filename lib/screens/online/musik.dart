@@ -1,13 +1,13 @@
-// lib/screens/online/musik.dart
+// ignore_for_file: use_build_context_synchronously, duplicate_ignore
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:yplayer/providers/player_provider.dart';
 import 'package:yplayer/services/ytdl_service.dart';
-import 'package:yplayer/services/download_service.dart'; // Import download service
-import 'package:yplayer/widgets/video_quality_dialog.dart'; // Import dialog
-import 'package:yplayer/widgets/download_progress_dialog.dart'; // Import dialog
-import 'package:yplayer/widgets/permission_dialog.dart'; // Import dialog
+import 'package:yplayer/services/download_service.dart';
+import 'package:yplayer/widgets/video_quality_dialog.dart';
+import 'package:yplayer/widgets/download_progress_dialog.dart';
+import 'package:yplayer/widgets/permission_dialog.dart';
 
 class MusikPageOnline extends StatefulWidget {
   const MusikPageOnline({super.key});
@@ -44,13 +44,11 @@ class _MusikPageOnlineState extends State<MusikPageOnline> {
       });
     }
   }
- Future<void> _downloadAudio(String videoId, String title) async {
-    // Periksa izin terlebih dahulu
+
+  Future<void> _downloadAudio(String videoId, String title) async {
     final hasPermission = await DownloadService.requestStoragePermission();
     if (!hasPermission) {
-      // Tampilkan dialog untuk meminta izin
       showDialog(
-        // ignore: use_build_context_synchronously
         context: context,
         builder: (context) => const PermissionDialog(),
       );
@@ -60,28 +58,29 @@ class _MusikPageOnlineState extends State<MusikPageOnline> {
     final sanitizedTitle = DownloadService.sanitizeFileName(title);
 
     showDialog(
-      // ignore: use_build_context_synchronously
       context: context,
       barrierDismissible: false,
+      // ====================================================================
+      // PERUBAHAN: Sesuaikan dengan DownloadProgressDialog baru
+      // ====================================================================
       builder: (context) => DownloadProgressDialog(
         title: 'Mengunduh Audio: $title',
-        downloadFuture: DownloadService.downloadAudio(videoId, sanitizedTitle, (
-          progress,
-        ) {
-          // Progress akan diperbarui di dalam dialog
-        }),
+        downloadFunction: (onProgress) => DownloadService.downloadAudio(
+          videoId,
+          sanitizedTitle,
+          onProgress, // Berikan callback progress dari dialog ke service
+        ),
       ),
+      // ====================================================================
     ).then((filePath) {
-      if (filePath != null) {
-        // ignore: use_build_context_synchronously
+      if (filePath != null && mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Audio berhasil diunduh: $sanitizedTitle.mp3'),
             backgroundColor: Colors.green,
           ),
         );
-      } else {
-        // ignore: use_build_context_synchronously
+      } else if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Gagal mengunduh audio'),
@@ -93,12 +92,9 @@ class _MusikPageOnlineState extends State<MusikPageOnline> {
   }
 
   Future<void> _downloadVideo(String videoId, String title) async {
-    // Periksa izin terlebih dahulu
     final hasPermission = await DownloadService.requestStoragePermission();
     if (!hasPermission) {
-      // Tampilkan dialog untuk meminta izin
       showDialog(
-        // ignore: use_build_context_synchronously
         context: context,
         builder: (context) => const PermissionDialog(),
       );
@@ -106,11 +102,9 @@ class _MusikPageOnlineState extends State<MusikPageOnline> {
     }
 
     try {
-      // Ambil daftar format video yang tersedia
       final formats = await DownloadService.getVideoFormats(videoId);
 
-      if (formats.isEmpty) {
-        // ignore: use_build_context_synchronously
+      if (formats.isEmpty && mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Tidak ada format video yang tersedia'),
@@ -120,9 +114,7 @@ class _MusikPageOnlineState extends State<MusikPageOnline> {
         return;
       }
 
-      // Tampilkan dialog untuk memilih kualitas
       showDialog(
-        // ignore: use_build_context_synchronously
         context: context,
         builder: (context) => VideoQualityDialog(
           formats: formats,
@@ -132,19 +124,21 @@ class _MusikPageOnlineState extends State<MusikPageOnline> {
             showDialog(
               context: context,
               barrierDismissible: false,
+              // ====================================================================
+              // PERUBAHAN: Sesuaikan dengan DownloadProgressDialog baru
+              // ====================================================================
               builder: (context) => DownloadProgressDialog(
                 title: 'Mengunduh Video: $title',
-                downloadFuture: DownloadService.downloadVideo(
+                downloadFunction: (onProgress) => DownloadService.downloadVideo(
                   videoId,
                   sanitizedTitle,
                   formatId,
-                  (progress) {
-                    // Progress akan diperbarui di dalam dialog
-                  },
+                  onProgress, // Berikan callback progress dari dialog ke service
                 ),
               ),
+              // ====================================================================
             ).then((filePath) {
-              if (filePath != null) {
+              if (filePath != null && mounted) {
                 // ignore: use_build_context_synchronously
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
@@ -154,7 +148,7 @@ class _MusikPageOnlineState extends State<MusikPageOnline> {
                     backgroundColor: Colors.green,
                   ),
                 );
-              } else {
+              } else if (mounted) {
                 // ignore: use_build_context_synchronously
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(
@@ -169,43 +163,17 @@ class _MusikPageOnlineState extends State<MusikPageOnline> {
       );
     } catch (e) {
       debugPrint('Error downloading video: $e');
-      // ignore: use_build_context_synchronously
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Gagal mengunduh video'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Gagal mengunduh video'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
 
-  void _showDownloadOptions(String videoId, String title) {
-    showModalBottomSheet(
-      context: context,
-      builder: (context) => Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          ListTile(
-            leading: const Icon(Icons.audiotrack),
-            title: const Text('Unduh Audio'),
-            onTap: () {
-              Navigator.pop(context);
-              _downloadAudio(videoId, title);
-            },
-          ),
-          ListTile(
-            leading: const Icon(Icons.videocam),
-            title: const Text('Unduh Video'),
-            onTap: () {
-              Navigator.pop(context);
-              _downloadVideo(videoId, title);
-            },
-          ),
-          const SizedBox(height: 16),
-        ],
-      ),
-    );
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -216,7 +184,6 @@ class _MusikPageOnlineState extends State<MusikPageOnline> {
               itemCount: _trendingSongs.length,
               itemBuilder: (context, index) {
                 final song = _trendingSongs[index];
-                //konten yang bisa diklik jadi tinggal di bagian menunya aja antara langsung download musik atau download video
                 return ListTile(
                   onTap: () {
                     final playerProvider = Provider.of<PlayerProvider>(
@@ -260,18 +227,13 @@ class _MusikPageOnlineState extends State<MusikPageOnline> {
                   trailing: PopupMenuButton<String>(
                     icon: const Icon(Icons.more_vert),
                     onSelected: (value) {
+                      // ====================================================================
+                      // PERBAIKAN: Sesuaikan logika pemanggilan fungsi
+                      // ====================================================================
                       if (value == 'downloadaudio') {
-                        final playerProvider = Provider.of<PlayerProvider>(
-                          context,
-                          listen: false,
-                        );
-                        playerProvider.playMusic(
-                          videoId: song['id'],
-                          title: song['title'],
-                          channel: song['channel'],
-                        );
-                      } else if (value == 'download') {
-                        _showDownloadOptions(song['id'], song['title']);
+                        _downloadAudio(song['id'], song['title']);
+                      } else if (value == 'downloadvideo') {
+                        _downloadVideo(song['id'], song['title']);
                       }
                     },
                     itemBuilder: (context) => [

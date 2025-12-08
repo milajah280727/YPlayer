@@ -1,5 +1,3 @@
-// lib/services/download_service.dart
-
 import 'dart:io';
 import 'package:dio/dio.dart';
 import 'package:path_provider/path_provider.dart';
@@ -9,37 +7,32 @@ import 'package:device_info_plus/device_info_plus.dart';
 
 class DownloadService {
   static final Dio _dio = Dio();
-  static const String _baseUrl = 'http://192.168.1.10:8000';
+  static const String _baseUrl = 'https://proceedings-pound-farm-get.trycloudflare.com';
 
   // Fungsi untuk memeriksa dan meminta izin penyimpanan
   static Future<bool> requestStoragePermission() async {
     try {
-      // Untuk Android 13 (API 33) ke atas
       if (Platform.isAndroid) {
         final androidInfo = await DeviceInfoPlugin().androidInfo;
         final sdkInt = androidInfo.version.sdkInt;
 
         if (sdkInt >= 33) {
-          // Android 13+ menggunakan izin media yang spesifik
           final audioPermission = await Permission.audio.request();
           final videoPermission = await Permission.videos.request();
           final photosPermission = await Permission.photos.request();
           
           return audioPermission.isGranted || videoPermission.isGranted || photosPermission.isGranted;
         } else if (sdkInt >= 30) {
-          // Android 11-12
           final storagePermission = await Permission.storage.request();
           final manageStoragePermission = await Permission.manageExternalStorage.request();
           
           return storagePermission.isGranted || manageStoragePermission.isGranted;
         } else {
-          // Android 10 dan sebelumnya
           final storagePermission = await Permission.storage.request();
           return storagePermission.isGranted;
         }
       } else if (Platform.isIOS) {
-        // iOS menggunakan izin dokumen
-        return true; // iOS tidak memerlukan izin khusus untuk folder dokumen
+        return true;
       }
       
       return false;
@@ -59,14 +52,12 @@ class DownloadService {
         final sdkInt = androidInfo.version.sdkInt;
 
         if (sdkInt >= 30) {
-          // Android 11+ coba gunakan folder Download terlebih dahulu
           try {
             directory = Directory('/storage/emulated/0/Download/Yplayer');
             if (!await directory.exists()) {
               await directory.create(recursive: true);
             }
           } catch (e) {
-            // Jika gagal, gunakan folder aplikasi
             directory = await getApplicationDocumentsDirectory();
             directory = Directory('${directory.path}/Yplayer');
             if (!await directory.exists()) {
@@ -74,14 +65,12 @@ class DownloadService {
             }
           }
         } else {
-          // Android 10 dan sebelumnya
           directory = Directory('/storage/emulated/0/Download/Yplayer');
           if (!await directory.exists()) {
             await directory.create(recursive: true);
           }
         }
       } else if (Platform.isIOS) {
-        // iOS menggunakan folder dokumen aplikasi
         directory = await getApplicationDocumentsDirectory();
         directory = Directory('${directory.path}/Yplayer');
         if (!await directory.exists()) {
@@ -92,7 +81,6 @@ class DownloadService {
       return directory;
     } catch (e) {
       debugPrint('Error getting storage directory: $e');
-      // Fallback ke folder dokumen aplikasi
       try {
         final appDir = await getApplicationDocumentsDirectory();
         final fallbackDir = Directory('${appDir.path}/Yplayer');
@@ -129,7 +117,7 @@ class DownloadService {
   static Future<List<Map<String, dynamic>>> getVideoFormats(String videoId) async {
     try {
       final response = await _dio.get(
-        '$_baseUrl/formats',
+        '$_baseUrl/get-formats',
         queryParameters: {'url': 'https://www.youtube.com/watch?v=$videoId'},
       );
       
@@ -151,31 +139,30 @@ class DownloadService {
     Function(double) onProgress,
   ) async {
     try {
-      // Periksa izin penyimpanan
       final hasPermission = await requestStoragePermission();
       if (!hasPermission) {
         debugPrint('Storage permission denied');
         return null;
       }
 
-      // Dapatkan direktori penyimpanan
       final directory = await getStorageDirectory();
       if (directory == null) {
         debugPrint('Could not get storage directory');
         return null;
       }
 
-      // Siapkan path file
       final fileName = '${sanitizeFileName(title)}.mp3';
       final filePath = '${directory.path}/$fileName';
 
-      // Download file
+      // ====================================================================
+      // PERUBAHAN: Kembali menggunakan 'queryParameters' untuk POST request
+      // ====================================================================
       await _dio.download(
-        '$_baseUrl/download',
+        '$_baseUrl/download-audio',
         filePath,
-        queryParameters: {
+        queryParameters: { // <--- BENAR: Mengirim sebagai query parameter
           'url': 'https://www.youtube.com/watch?v=$videoId',
-          'format_id': 'bestaudio[ext=m4a]/bestaudio/best',
+          'quality': 'best',
         },
         onReceiveProgress: (received, total) {
           if (total != -1) {
@@ -184,9 +171,11 @@ class DownloadService {
           }
         },
         options: Options(
+          method: 'POST', // <--- Tetap gunakan metode POST
           receiveTimeout: const Duration(minutes: 30),
         ),
       );
+      // ====================================================================
 
       return filePath;
     } catch (e) {
@@ -203,29 +192,28 @@ class DownloadService {
     Function(double) onProgress,
   ) async {
     try {
-      // Periksa izin penyimpanan
       final hasPermission = await requestStoragePermission();
       if (!hasPermission) {
         debugPrint('Storage permission denied');
         return null;
       }
 
-      // Dapatkan direktori penyimpanan
       final directory = await getStorageDirectory();
       if (directory == null) {
         debugPrint('Could not get storage directory');
         return null;
       }
 
-      // Siapkan path file
       final fileName = '${sanitizeFileName(title)}.mp4';
       final filePath = '${directory.path}/$fileName';
 
-      // Download file
+      // ====================================================================
+      // PERUBAHAN: Kembali menggunakan 'queryParameters' untuk POST request
+      // ====================================================================
       await _dio.download(
         '$_baseUrl/download',
         filePath,
-        queryParameters: {
+        queryParameters: { // <--- BENAR: Mengirim sebagai query parameter
           'url': 'https://www.youtube.com/watch?v=$videoId',
           'format_id': formatId,
         },
@@ -236,9 +224,11 @@ class DownloadService {
           }
         },
         options: Options(
+          method: 'POST', // <--- Tetap gunakan metode POST
           receiveTimeout: const Duration(minutes: 30),
         ),
       );
+      // ====================================================================
 
       return filePath;
     } catch (e) {
