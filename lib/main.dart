@@ -53,6 +53,12 @@ class _HalamanUtamaState extends State<HalamanUtama>
   late TabController _tabController;
   final List<String> _judulTab = ["Beranda", "Musik", "Favorit", "Teratas"];
 
+  // ====================================================================
+  // PERUBAHAN: TAMBAHKAN GLOBAL KEY
+  // ====================================================================
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
+  // ====================================================================
+
   @override
   void initState() {
     super.initState();
@@ -75,6 +81,11 @@ class _HalamanUtamaState extends State<HalamanUtama>
     final padding = MediaQuery.of(context).padding;
     
     return Scaffold(
+      // ====================================================================
+      // PERUBAHAN: TAMBAHKAN KEY KE SCAFFOLD
+      // ====================================================================
+      key: _scaffoldKey,
+      // ====================================================================
       drawer: Drawer(
         child: ListView(
           children: [
@@ -107,9 +118,7 @@ class _HalamanUtamaState extends State<HalamanUtama>
           Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              // AppBar Kustom tanpa SafeArea
               _buildCustomAppBar(context, padding),
-              // TabBarView dengan padding di bagian bawah
               Expanded(
                 child: Padding(
                   padding: EdgeInsets.only(bottom: padding.bottom),
@@ -137,25 +146,26 @@ class _HalamanUtamaState extends State<HalamanUtama>
     );
   }
 
-  // Widget untuk membangun AppBar kustom
   Widget _buildCustomAppBar(BuildContext context, EdgeInsets padding) {
     return Container(
       decoration: const BoxDecoration(
         color: Colors.pink,
       ),
-      // Gunakan Padding untuk menggantikan SafeArea
       child: Padding(
         padding: EdgeInsets.only(top: padding.top, left: 8.0, right: 8.0),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // Bagian Atas (Judul dan Aksi)
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 IconButton(
                   icon: const Icon(Icons.menu, color: Colors.white),
-                  onPressed: () => Scaffold.of(context).openDrawer(),
+                  // ====================================================================
+                  // PERUBAHAN: GUNAKAN GLOBAL KEY UNTUK MEMBUKA DRAWER
+                  // ====================================================================
+                  onPressed: () => _scaffoldKey.currentState?.openDrawer(),
+                  // ====================================================================
                 ),
                 Text(
                   _judulTab[_tabController.index],
@@ -176,7 +186,6 @@ class _HalamanUtamaState extends State<HalamanUtama>
                 ),
               ],
             ),
-            // TabBar
             TabBar(
               controller: _tabController,
               labelColor: Colors.black,

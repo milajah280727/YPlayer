@@ -276,15 +276,39 @@ class MiniPlayerWidget extends StatelessWidget {
     );
   }
 
+// lib/widgets/mini_player_widget.dart
+
+// ... (import dan class MiniPlayerWidget tetap sama)
+
   Widget _buildMoreOptionsMenu(BuildContext context, PlayerProvider player) {
+    // Periksa apakah lagu saat ini sudah ada di favorit
+    final currentSongId = player.currentVideoId ?? '';
+    final isCurrentFavorite = player.isFavorite(currentSongId);
+
     return PopupMenuButton<String>(
       icon: const Icon(Icons.more_vert, color: Colors.white),
       onSelected: (String value) {
         switch (value) {
           case 'add_to_favorites':
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Fitur favorit belum tersedia')),
-            );
+            if (currentSongId.isNotEmpty) {
+              // Ambil data lagu saat ini
+              final currentSong = {
+                'id': currentSongId,
+                'title': player.currentTitle ?? 'Unknown Title',
+                'channel': player.currentChannel ?? 'Unknown Channel',
+                'thumbnail': 'https://i.ytimg.com/vi/$currentSongId/hqdefault.jpg',
+              };
+              // Panggil metode dari PlayerProvider
+              player.addToFavorites(currentSong);
+              
+              // Tampilkan SnackBar konfirmasi
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Ditambahkan ke Favorit'),
+                  backgroundColor: Colors.green,
+                ),
+              );
+            }
             break;
           case 'view_details':
             ScaffoldMessenger.of(context).showSnackBar(
@@ -294,13 +318,14 @@ class MiniPlayerWidget extends StatelessWidget {
         }
       },
       itemBuilder: (BuildContext context) => [
-        const PopupMenuItem<String>(
+        PopupMenuItem<String>(
           value: 'add_to_favorites',
           child: Row(
             children: [
-              Icon(Icons.favorite_border, color: Colors.pink),
-              SizedBox(width: 8),
-              Text('Tambah ke Favorit'),
+              // Ubah ikon berdasarkan status favorit
+              Icon(isCurrentFavorite ? Icons.favorite : Icons.favorite_border, color: Colors.pink),
+              const SizedBox(width: 8),
+              Text(isCurrentFavorite ? 'Hapus dari Favorit' : 'Tambah ke Favorit'),
             ],
           ),
         ),
@@ -317,6 +342,8 @@ class MiniPlayerWidget extends StatelessWidget {
       ],
     );
   }
+
+// ... (sisa kode MiniPlayerWidget tetap sama)
 
   Widget _buildProgressBarWithTimestamp(BuildContext context, PlayerProvider player) {
     return Column(
@@ -444,10 +471,7 @@ class MiniPlayerWidget extends StatelessWidget {
         return Container(
           decoration: BoxDecoration(
             color: const Color.fromARGB(255, 43, 41, 41),
-            borderRadius: const BorderRadius.only(
-              topLeft: Radius.circular(20),
-              topRight: Radius.circular(20),
-            ),
+            
           ),
           child: percentage > 0.5
               ? _buildRelatedSongsList(player)

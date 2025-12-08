@@ -16,7 +16,12 @@ class BerandaPageOnline extends StatefulWidget {
   State<BerandaPageOnline> createState() => _BerandaPageOnlineState();
 }
 
-class _BerandaPageOnlineState extends State<BerandaPageOnline> {
+// ====================================================================
+// PERUBAHAN: TAMBAHKAN AutomaticKeepAliveClientMixin
+// ====================================================================
+class _BerandaPageOnlineState extends State<BerandaPageOnline>
+    with AutomaticKeepAliveClientMixin {
+// ====================================================================
   List<Map<String, dynamic>> _trendingSongs = [];
   bool _isLoading = true;
 
@@ -60,18 +65,14 @@ class _BerandaPageOnlineState extends State<BerandaPageOnline> {
     showDialog(
       context: context,
       barrierDismissible: false,
-      // ====================================================================
-      // PERUBAHAN: Sesuaikan dengan DownloadProgressDialog baru
-      // ====================================================================
       builder: (context) => DownloadProgressDialog(
         title: 'Mengunduh Audio: $title',
         downloadFunction: (onProgress) => DownloadService.downloadAudio(
           videoId,
           sanitizedTitle,
-          onProgress, // Berikan callback progress dari dialog ke service
+          onProgress,
         ),
       ),
-      // ====================================================================
     ).then((filePath) {
       if (filePath != null && mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -124,19 +125,15 @@ class _BerandaPageOnlineState extends State<BerandaPageOnline> {
             showDialog(
               context: context,
               barrierDismissible: false,
-              // ====================================================================
-              // PERUBAHAN: Sesuaikan dengan DownloadProgressDialog baru
-              // ====================================================================
               builder: (context) => DownloadProgressDialog(
                 title: 'Mengunduh Video: $title',
                 downloadFunction: (onProgress) => DownloadService.downloadVideo(
                   videoId,
                   sanitizedTitle,
                   formatId,
-                  onProgress, // Berikan callback progress dari dialog ke service
+                  onProgress,
                 ),
               ),
-              // ====================================================================
             ).then((filePath) {
               if (filePath != null && mounted) {
                 ScaffoldMessenger.of(context).showSnackBar(
@@ -200,6 +197,11 @@ class _BerandaPageOnlineState extends State<BerandaPageOnline> {
 
  @override
   Widget build(BuildContext context) {
+    // ====================================================================
+    // PERUBAHAN: TAMBAHKAN super.build(context)
+    // ====================================================================
+    super.build(context);
+    // ====================================================================
     return _isLoading
         ? const Center(child: CircularProgressIndicator())
         : ListView.builder(
@@ -232,7 +234,7 @@ class _BerandaPageOnlineState extends State<BerandaPageOnline> {
                 ),
                 title: Text(song['title'], maxLines: 1, overflow: TextOverflow.ellipsis),
                 subtitle: Text(song['channel'], maxLines: 1, overflow: TextOverflow.ellipsis),
-                trailing: PopupMenuButton<String>(
+                trailing: PopupMenuButton<String>( // <--- PERBAIKAN: PopupMenuButton, bukan Popup MenuButton
                   icon: const Icon(Icons.more_vert),
                   onSelected: (value) {
                     if (value == 'play') {
@@ -255,4 +257,11 @@ class _BerandaPageOnlineState extends State<BerandaPageOnline> {
             },
           );
   }
+  
+  // ====================================================================
+  // PERUBAHAN: OVERRIDE wantKeepAlive
+  // ====================================================================
+  @override
+  bool get wantKeepAlive => true;
+  // ====================================================================
 }

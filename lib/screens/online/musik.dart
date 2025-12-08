@@ -16,7 +16,12 @@ class MusikPageOnline extends StatefulWidget {
   State<MusikPageOnline> createState() => _MusikPageOnlineState();
 }
 
-class _MusikPageOnlineState extends State<MusikPageOnline> {
+// ====================================================================
+// PERUBAHAN: TAMBAHKAN AutomaticKeepAliveClientMixin
+// ====================================================================
+class _MusikPageOnlineState extends State<MusikPageOnline>
+    with AutomaticKeepAliveClientMixin {
+// ====================================================================
   List<Map<String, dynamic>> _trendingSongs = [];
   bool _isLoading = true;
 
@@ -44,8 +49,7 @@ class _MusikPageOnlineState extends State<MusikPageOnline> {
       });
     }
   }
-
-  Future<void> _downloadAudio(String videoId, String title) async {
+ Future<void> _downloadAudio(String videoId, String title) async {
     final hasPermission = await DownloadService.requestStoragePermission();
     if (!hasPermission) {
       showDialog(
@@ -60,18 +64,14 @@ class _MusikPageOnlineState extends State<MusikPageOnline> {
     showDialog(
       context: context,
       barrierDismissible: false,
-      // ====================================================================
-      // PERUBAHAN: Sesuaikan dengan DownloadProgressDialog baru
-      // ====================================================================
       builder: (context) => DownloadProgressDialog(
         title: 'Mengunduh Audio: $title',
         downloadFunction: (onProgress) => DownloadService.downloadAudio(
           videoId,
           sanitizedTitle,
-          onProgress, // Berikan callback progress dari dialog ke service
+          onProgress,
         ),
       ),
-      // ====================================================================
     ).then((filePath) {
       if (filePath != null && mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -124,22 +124,17 @@ class _MusikPageOnlineState extends State<MusikPageOnline> {
             showDialog(
               context: context,
               barrierDismissible: false,
-              // ====================================================================
-              // PERUBAHAN: Sesuaikan dengan DownloadProgressDialog baru
-              // ====================================================================
               builder: (context) => DownloadProgressDialog(
                 title: 'Mengunduh Video: $title',
                 downloadFunction: (onProgress) => DownloadService.downloadVideo(
                   videoId,
                   sanitizedTitle,
                   formatId,
-                  onProgress, // Berikan callback progress dari dialog ke service
+                  onProgress,
                 ),
               ),
-              // ====================================================================
             ).then((filePath) {
               if (filePath != null && mounted) {
-                // ignore: use_build_context_synchronously
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
                     content: Text(
@@ -149,7 +144,6 @@ class _MusikPageOnlineState extends State<MusikPageOnline> {
                   ),
                 );
               } else if (mounted) {
-                // ignore: use_build_context_synchronously
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(
                     content: Text('Gagal mengunduh video'),
@@ -174,9 +168,42 @@ class _MusikPageOnlineState extends State<MusikPageOnline> {
     }
   }
 
+  // ignore: unused_element
+  void _showDownloadOptions(String videoId, String title) {
+    showModalBottomSheet(
+      context: context,
+      builder: (context) => Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          ListTile(
+            leading: const Icon(Icons.audiotrack),
+            title: const Text('Unduh Audio'),
+            onTap: () {
+              Navigator.pop(context);
+              _downloadAudio(videoId, title);
+            },
+          ),
+          ListTile(
+            leading: const Icon(Icons.videocam),
+            title: const Text('Unduh Video'),
+            onTap: () {
+              Navigator.pop(context);
+              _downloadVideo(videoId, title);
+            },
+          ),
+          const SizedBox(height: 16),
+        ],
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
+    // ====================================================================
+    // PERUBAHAN: TAMBAHKAN super.build(context)
+    // ====================================================================
+    super.build(context);
+    // ====================================================================
     return Scaffold(
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
@@ -227,9 +254,6 @@ class _MusikPageOnlineState extends State<MusikPageOnline> {
                   trailing: PopupMenuButton<String>(
                     icon: const Icon(Icons.more_vert),
                     onSelected: (value) {
-                      // ====================================================================
-                      // PERBAIKAN: Sesuaikan logika pemanggilan fungsi
-                      // ====================================================================
                       if (value == 'downloadaudio') {
                         _downloadAudio(song['id'], song['title']);
                       } else if (value == 'downloadvideo') {
@@ -264,4 +288,11 @@ class _MusikPageOnlineState extends State<MusikPageOnline> {
             ),
     );
   }
+  
+  // ====================================================================
+  // PERUBAHAN: OVERRIDE wantKeepAlive
+  // ====================================================================
+  @override
+  bool get wantKeepAlive => true;
+  // ====================================================================
 }

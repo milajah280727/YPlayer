@@ -1,12 +1,15 @@
-// lib/providers/player_provider.dart
-
 import 'package:flutter/material.dart';
 import 'package:miniplayer/miniplayer.dart';
-import 'package:video_player/video_player.dart';
+import 'package:video_player/video_player.dart'; // Tambahkan import ini
+// ignore: unused_import
+import 'package:provider/provider.dart';
 import 'package:chewie/chewie.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:just_audio/just_audio.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../services/ytdl_service.dart';
+
+// Pindahkan enum ke luar class agar bisa diakses dari mana saja
+enum RepeatMode { off, one, all }
 
 class PlayerProvider extends ChangeNotifier {
   // Audio Player (Utama)
@@ -34,9 +37,13 @@ class PlayerProvider extends ChangeNotifier {
   List<Map<String, dynamic>> _originalQueue = [];
   int _currentQueueIndex = 0;
 
-  // ==================== PERUBAHAN 1: TAMBAHKAN STATE LOADING ====================
+  // ==================== STATE UNTUK FAVORIT DAN LAGU TERAKHIR DIPUTAR ====================
+  List<Map<String, dynamic>> _favorites = [];
+  List<Map<String, dynamic>> _recentlyPlayed = [];
+  // ==================== AKHIR STATE ====================
+
+  // State untuk loading
   bool _isLoadingNewSong = false;
-  // ==================== AKHIR PERUBAHAN 1 ====================
 
   // Map untuk menyimpan stream audio yang sudah di-preload
   final Map<String, String> _preloadedAudioStreams = {};
@@ -56,13 +63,17 @@ class PlayerProvider extends ChangeNotifier {
   RepeatMode get repeatMode => _repeatMode;
   bool get isShuffled => _isShuffled;
   List<Map<String, dynamic>> get relatedSongs => _relatedSongs;
-  
-  // ==================== PERUBAHAN 2: TAMBAHKAN GETTER ====================
   bool get isLoadingNewSong => _isLoadingNewSong;
-  // ==================== AKHIR PERUBAHAN 2 ====================
+  
+  // ==================== GETTER UNTUK FAVORIT DAN LAGU TERAKHIR DIPUTAR ====================
+  List<Map<String, dynamic>> get favorites => _favorites;
+  List<Map<String, dynamic>> get recentlyPlayed => _recentlyPlayed;
+  // ==================== AKHIR GETTER ====================
 
   PlayerProvider({required audioHandler}) {
     _initAudioPlayer();
+    _loadFavorites();
+    _loadRecentlyPlayed();
   }
 
   void _initAudioPlayer() {
@@ -88,14 +99,12 @@ class PlayerProvider extends ChangeNotifier {
         _handleSongCompletion();
       }
       
-      // ==================== PERUBAHAN 3: LISTENER UNTUK MENANGKAP KETIKA AUDIO BENAR-BENAR BERPUTAR ====================
       // Jika sedang loading dan audio sudah mulai diputar, hentikan status loading
       if (_isLoadingNewSong && state.playing) {
         debugPrint(">>> Audio telah berputar. Menghentikan status loading.");
         _isLoadingNewSong = false;
         notifyListeners();
       }
-      // ==================== AKHIR PERUBAHAN 3 ====================
     });
   }
 
@@ -141,7 +150,98 @@ class PlayerProvider extends ChangeNotifier {
     );
   }
 
-  // ==================== PERUBAHAN 4: MODIFIKASI FUNGSI playMusic ====================
+  // ==================== METODE UNTUK MANAJEMEN FAVORIT ====================
+  Future<void> _loadFavorites() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final favoritesJson = prefs.getStringList('favorites') ?? [];
+      _favorites = favoritesJson.map((songJson) {
+        final parts = songJson.split('|||');
+        return {
+          'id': parts[0],
+          'title': parts[1],
+          'channel': parts[2],
+          'thumbnail': parts[3],
+        };
+      }).toList();
+      notifyListeners();
+    } catch (e) {
+      debugPrint("Error loading favorites: $e");
+    }
+  }
+
+  Future<void> _saveFavorites() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final favoritesJson = _favorites.map((song) => "${song['id']}|||${song['title']}|||${song['channel']}|||${song['thumbnail']}").toList();
+      await prefs.setStringList('favorites', favoritesJson);
+    } catch (e) {
+      debugPrint("Error saving favorites: $e");
+    }
+  }
+
+  void addToFavorites(Map<String, dynamic> song) {
+    if (_favorites.any((favSong) => favSong['id'] == song['id'])) {
+      debugPrint("Song is already in favorites.");
+      return;
+    }
+    _favorites.insert(0, song);
+    _saveFavorites();
+    notifyListeners();
+  }
+
+  void removeFromFavorites(String videoId) {
+    _favorites.removeWhere((song) => song['id'] == videoId);
+    _saveFavorites();
+    notifyListeners();
+  }
+
+  bool isFavorite(String videoId) {
+    return _favorites.any((favSong) => favSong['id'] == videoId);
+  }
+  // ==================== AKHIR METODE FAVORIT ====================
+
+  // ==================== METODE UNTUK MANAJEMEN LAGU TERAKHIR DIPUTAR ====================
+  Future<void> _loadRecentlyPlayed() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final recentJson = prefs.getStringList('recently_played') ?? [];
+      _recentlyPlayed = recentJson.map((songJson) {
+        final parts = songJson.split('|||');
+        return {
+          'id': parts[0],
+          'title': parts[1],
+          'channel': parts[2],
+          'thumbnail': parts[3],
+        };
+      }).toList();
+      notifyListeners();
+    } catch (e) {
+      debugPrint("Error loading recently played: $e");
+    }
+  }
+
+  Future<void> _saveRecentlyPlayed() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final recentJson = _recentlyPlayed.map((song) => "${song['id']}|||${song['title']}|||${song['channel']}|||${song['thumbnail']}").toList();
+      await prefs.setStringList('recently_played', recentJson);
+    } catch (e) {
+      debugPrint("Error saving recently played: $e");
+    }
+  }
+
+  void addToRecentlyPlayed(Map<String, dynamic> song) {
+    _recentlyPlayed.removeWhere((s) => s['id'] == song['id']);
+    _recentlyPlayed.insert(0, song);
+    if (_recentlyPlayed.length > 20) {
+      _recentlyPlayed = _recentlyPlayed.take(20).toList();
+    }
+    _saveRecentlyPlayed();
+    notifyListeners();
+  }
+  // ==================== AKHIR METODE LAGU TERAKHIR DIPUTAR ====================
+
   Future<void> playMusic({
     required String videoId,
     required String title,
@@ -152,9 +252,8 @@ class PlayerProvider extends ChangeNotifier {
       return;
     }
 
-    // Set status loading menjadi true
     _isLoadingNewSong = true;
-    notifyListeners(); // Langsung update UI ke loading
+    notifyListeners();
 
     debugPrint(">>> PERMINTAAN LAGU BARU: Melakukan reset total pemutar.");
     await _audioPlayer.stop();
@@ -178,21 +277,28 @@ class PlayerProvider extends ChangeNotifier {
       final videoInfoMap = await YTDLService.getInfoAsMap(videoId);
       
       await _audioPlayer.setUrl(audioUrl);
-      await _audioPlayer.play(); // Listener akan menangkap perubahan status 'playing'
+      await _audioPlayer.play();
 
       _duration = videoInfoMap['duration'];
 
       await _fetchRelatedSongsAndSetQueue(videoId);
-      await _saveToRecent();
+      
+      // ==================== TAMBAHKAN KE RECENTLY PLAYED ====================
+      final currentSong = {
+        'id': videoId,
+        'title': title,
+        'channel': channel,
+        'thumbnail': 'https://i.ytimg.com/vi/$videoId/hqdefault.jpg',
+      };
+      addToRecentlyPlayed(currentSong);
+      // ==================== AKHIR TAMBAHKAN KE RECENTLY PLAYED ====================
     } catch (e) {
       debugPrint('Error loading music: $e');
-      // Jika terjadi error, hentikan status loading
       _isLoadingNewSong = false;
       notifyListeners();
       hidePlayer();
     }
   }
-  // ==================== AKHIR PERUBAHAN 4 ====================
 
   Future<void> _fetchRelatedSongsAndSetQueue(String currentVideoId) async {
     try {
@@ -356,24 +462,6 @@ class PlayerProvider extends ChangeNotifier {
     _videoController = null;
   }
 
-  Future<void> _saveToRecent() async {
-    if (_currentVideoId == null) return;
-
-    final prefs = await SharedPreferences.getInstance();
-    final item = [
-      _currentVideoId,
-      _currentTitle,
-      _currentChannel,
-      _duration?.toString().split('.').first ?? 'Live',
-      'https://i.ytimg.com/vi/$_currentVideoId/hqdefault.jpg',
-    ].join('|||');
-    List<String> recent = prefs.getStringList('recent_played') ?? [];
-    recent.removeWhere((e) => e.startsWith(_currentVideoId ?? ''));
-    recent.add(item);
-    if (recent.length > 50) recent.removeAt(0);
-    await prefs.setStringList('recent_played', recent);
-  }
-
   @override
   void dispose() {
     debugPrint("Disposing PlayerProvider.");
@@ -385,6 +473,3 @@ class PlayerProvider extends ChangeNotifier {
     super.dispose();
   }
 }
-
-// Tambahkan enum RepeatMode jika belum ada
-enum RepeatMode { off, one, all }
