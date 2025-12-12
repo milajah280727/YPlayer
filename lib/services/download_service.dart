@@ -7,7 +7,7 @@ import 'package:device_info_plus/device_info_plus.dart';
 
 class DownloadService {
   static final Dio _dio = Dio();
-  static const String _baseUrl = 'https://proceedings-pound-farm-get.trycloudflare.com';
+  static const String _baseUrl = 'https://announcements-wto-cologne-reputation.trycloudflare.com';
 
   // Fungsi untuk memeriksa dan meminta izin penyimpanan
   static Future<bool> requestStoragePermission() async {

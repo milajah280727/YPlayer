@@ -2,9 +2,8 @@
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:yplayer/providers/player_provider.dart';
 import 'package:yplayer/providers/search_provider.dart';
-import 'package:yplayer/services/ytdl_service.dart';
+import 'package:yplayer/screens/search/search_page_result.dart';
 
 class SearchPage extends StatefulWidget {
   const SearchPage({super.key});
@@ -15,83 +14,52 @@ class SearchPage extends StatefulWidget {
 
 class _SearchPageState extends State<SearchPage> {
   final TextEditingController _searchController = TextEditingController();
-  List<Map<String, dynamic>> _searchResults = [];
-  bool _isLoading = false;
-  List<String> _searchHistory = [];
 
   @override
   void initState() {
     super.initState();
-    _loadSearchHistory();
-  }
-
-  Future<void> _loadSearchHistory() async {
-    final searchProvider = Provider.of<SearchProvider>(context, listen: false);
-    await searchProvider.loadSearchHistory();
-    setState(() {
-      _searchHistory = searchProvider.searchHistory;
+    // Muat riwayat pencarian saat halaman dibuka
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Provider.of<SearchProvider>(context, listen: false).loadSearchHistory();
     });
   }
 
-  Future<void> _searchSongs(String query) async {
+  void _searchSongs(String query) {
     if (query.isEmpty) return;
-
-    setState(() {
-      _isLoading = true;
-    });
-
-    try {
-      final results = await YTDLService.search(query);
-      
-      // Simpan ke riwayat pencarian
-      // ignore: use_build_context_synchronously
-      final searchProvider = Provider.of<SearchProvider>(context, listen: false);
-      await searchProvider.addToSearchHistory(query);
-      await _loadSearchHistory();
-      
-      setState(() {
-        _searchResults = results;
-        _isLoading = false;
-      });
-    } catch (e) {
-      debugPrint('Error searching songs: $e');
-      setState(() {
-        _isLoading = false;
-      });
-    }
+    // Navigasi ke halaman hasil pencarian
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => SearchPageResult(query: query),
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Pencarian'),
+        // PERUBAHAN: TextField dipindahkan ke sini
+        title: TextField(
+          controller: _searchController,
+          autofocus: true,
+          style: const TextStyle(color: Colors.white), // Agar teks input berwarna putih
+          cursorColor: Colors.white, // Agar kursor berwarna putih
+          decoration: const InputDecoration(
+            hintText: 'Cari lagu...',
+            hintStyle: TextStyle(color: Colors.white70), // Agar hint teks terlihat
+            border: InputBorder.none, // Menghilangkan garis bawah default
+          ),
+          onSubmitted: (value) => _searchSongs(value),
+        ),
         foregroundColor: Colors.white,
         backgroundColor: Colors.pink,
       ),
-      body: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: TextField(
-              controller: _searchController,
-              autofocus: true,
-              decoration: InputDecoration(
-                hintText: 'Cari lagu...',
-                prefixIcon: const Icon(Icons.search),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(25.0),
-                ),
-                suffixIcon: IconButton(
-                  icon: const Icon(Icons.search),
-                  onPressed: () => _searchSongs(_searchController.text),
-                ),
-              ),
-              onSubmitted: (value) => _searchSongs(value),
-            ),
-          ),
-          if (_searchHistory.isNotEmpty && _searchResults.isEmpty)
-            Padding(
+      // PERUBAHAN: Body sekarang hanya berisi riwayat pencarian
+      body: Consumer<SearchProvider>(
+        builder: (context, searchProvider, child) {
+          if (searchProvider.searchHistory.isNotEmpty) {
+            return Padding(
               padding: const EdgeInsets.all(16.0),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -104,7 +72,7 @@ class _SearchPageState extends State<SearchPage> {
                   Wrap(
                     spacing: 8.0,
                     runSpacing: 4.0,
-                    children: _searchHistory.map((query) {
+                    children: searchProvider.searchHistory.map((query) {
                       return ActionChip(
                         label: Text(query),
                         onPressed: () {
@@ -116,65 +84,16 @@ class _SearchPageState extends State<SearchPage> {
                   ),
                 ],
               ),
+            );
+          }
+          // Jika tidak ada riwayat, tampilkan pesan atau widget kosong
+          return const Center(
+            child: Text(
+              'Cari lagu favorit Anda',
+              style: TextStyle(color: Colors.grey),
             ),
-          Expanded(
-            child: _isLoading
-                ? const Center(child: CircularProgressIndicator())
-                : _searchResults.isEmpty
-                    ? const Center(
-                        child: Text(
-                          'Cari lagu favorit Anda',
-                          style: TextStyle(color: Colors.grey),
-                        ),
-                      )
-                    : ListView.builder(
-                        itemCount: _searchResults.length,
-                        itemBuilder: (context, index) {
-                          final song = _searchResults[index];
-                          return ListTile(
-                            leading: ClipRRect(
-                              borderRadius: BorderRadius.circular(4),
-                              child: Image.network(
-                                song['thumbnail'],
-                                width: 50,
-                                height: 50,
-                                fit: BoxFit.cover,
-                                errorBuilder: (_, __, ___) => Container(
-                                  width: 50,
-                                  height: 50,
-                                  color: Colors.grey[800],
-                                  child: const Icon(
-                                    Icons.music_video,
-                                    color: Colors.white70,
-                                  ),
-                                ),
-                              ),
-                            ),
-                            title: Text(
-                              song['title'],
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                            subtitle: Text(
-                              song['channel'],
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                            trailing: const Icon(Icons.play_circle),
-                            onTap: () {
-                              final playerProvider = Provider.of<PlayerProvider>(context, listen: false);
-                              playerProvider.playMusic(
-                                videoId: song['id'],
-                                title: song['title'],
-                                channel: song['channel'],
-                              );
-                              Navigator.pop(context);
-                            },
-                          );
-                        },
-                      ),
-          ),
-        ],
+          );
+        },
       ),
     );
   }

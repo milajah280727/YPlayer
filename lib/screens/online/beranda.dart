@@ -16,12 +16,8 @@ class BerandaPageOnline extends StatefulWidget {
   State<BerandaPageOnline> createState() => _BerandaPageOnlineState();
 }
 
-// ====================================================================
-// PERUBAHAN: TAMBAHKAN AutomaticKeepAliveClientMixin
-// ====================================================================
 class _BerandaPageOnlineState extends State<BerandaPageOnline>
     with AutomaticKeepAliveClientMixin {
-// ====================================================================
   List<Map<String, dynamic>> _trendingSongs = [];
   bool _isLoading = true;
 
@@ -92,6 +88,7 @@ class _BerandaPageOnlineState extends State<BerandaPageOnline>
     });
   }
 
+  // PERUBAHAN: Fungsi _downloadVideo yang diperbaiki
   Future<void> _downloadVideo(String videoId, String title) async {
     final hasPermission = await DownloadService.requestStoragePermission();
     if (!hasPermission) {
@@ -103,9 +100,9 @@ class _BerandaPageOnlineState extends State<BerandaPageOnline>
     }
 
     try {
-      final formats = await DownloadService.getVideoFormats(videoId);
+      final resolutions = await YTDLService.getVideoResolutions(videoId);
       
-      if (formats.isEmpty && mounted) {
+      if (resolutions.isEmpty && mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Tidak ada format video yang tersedia'),
@@ -118,7 +115,8 @@ class _BerandaPageOnlineState extends State<BerandaPageOnline>
       showDialog(
         context: context,
         builder: (context) => VideoQualityDialog(
-          formats: formats,
+          // PERBAIKAN: Ubah 'resolutions' menjadi 'formats'
+          formats: resolutions,
           onQualitySelected: (formatId) {
             final sanitizedTitle = DownloadService.sanitizeFileName(title);
             
@@ -197,11 +195,7 @@ class _BerandaPageOnlineState extends State<BerandaPageOnline>
 
  @override
   Widget build(BuildContext context) {
-    // ====================================================================
-    // PERUBAHAN: TAMBAHKAN super.build(context)
-    // ====================================================================
     super.build(context);
-    // ====================================================================
     return _isLoading
         ? const Center(child: CircularProgressIndicator())
         : ListView.builder(
@@ -221,8 +215,8 @@ class _BerandaPageOnlineState extends State<BerandaPageOnline>
                   borderRadius: BorderRadius.circular(4),
                   child: Image.network(
                     song['thumbnail'],
-                    width: 50,
-                    height: 50,
+                    width: 90,
+                    height: 70,
                     fit: BoxFit.cover,
                     errorBuilder: (_, __, ___) => Container(
                       width: 50,
@@ -234,7 +228,7 @@ class _BerandaPageOnlineState extends State<BerandaPageOnline>
                 ),
                 title: Text(song['title'], maxLines: 1, overflow: TextOverflow.ellipsis),
                 subtitle: Text(song['channel'], maxLines: 1, overflow: TextOverflow.ellipsis),
-                trailing: PopupMenuButton<String>( // <--- PERBAIKAN: PopupMenuButton, bukan Popup MenuButton
+                trailing: PopupMenuButton<String>(
                   icon: const Icon(Icons.more_vert),
                   onSelected: (value) {
                     if (value == 'play') {
@@ -258,10 +252,6 @@ class _BerandaPageOnlineState extends State<BerandaPageOnline>
           );
   }
   
-  // ====================================================================
-  // PERUBAHAN: OVERRIDE wantKeepAlive
-  // ====================================================================
   @override
   bool get wantKeepAlive => true;
-  // ====================================================================
 }

@@ -16,12 +16,8 @@ class MusikPageOnline extends StatefulWidget {
   State<MusikPageOnline> createState() => _MusikPageOnlineState();
 }
 
-// ====================================================================
-// PERUBAHAN: TAMBAHKAN AutomaticKeepAliveClientMixin
-// ====================================================================
 class _MusikPageOnlineState extends State<MusikPageOnline>
     with AutomaticKeepAliveClientMixin {
-// ====================================================================
   List<Map<String, dynamic>> _trendingSongs = [];
   bool _isLoading = true;
 
@@ -49,7 +45,8 @@ class _MusikPageOnlineState extends State<MusikPageOnline>
       });
     }
   }
- Future<void> _downloadAudio(String videoId, String title) async {
+
+  Future<void> _downloadAudio(String videoId, String title) async {
     final hasPermission = await DownloadService.requestStoragePermission();
     if (!hasPermission) {
       showDialog(
@@ -102,7 +99,7 @@ class _MusikPageOnlineState extends State<MusikPageOnline>
     }
 
     try {
-      final formats = await DownloadService.getVideoFormats(videoId);
+      final formats = await YTDLService.getVideoResolutions(videoId);
 
       if (formats.isEmpty && mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -117,43 +114,44 @@ class _MusikPageOnlineState extends State<MusikPageOnline>
       showDialog(
         context: context,
         builder: (context) => VideoQualityDialog(
-          formats: formats,
-          onQualitySelected: (formatId) {
-            final sanitizedTitle = DownloadService.sanitizeFileName(title);
+            formats: formats,
+            onQualitySelected: (formatId) {
+              final sanitizedTitle = DownloadService.sanitizeFileName(title);
 
-            showDialog(
-              context: context,
-              barrierDismissible: false,
-              builder: (context) => DownloadProgressDialog(
-                title: 'Mengunduh Video: $title',
-                downloadFunction: (onProgress) => DownloadService.downloadVideo(
-                  videoId,
-                  sanitizedTitle,
-                  formatId,
-                  onProgress,
+              showDialog(
+                context: context,
+                barrierDismissible: false,
+                builder: (context) => DownloadProgressDialog(
+                  title: 'Mengunduh Video: $title',
+                  downloadFunction: (onProgress) => DownloadService.downloadVideo(
+                    videoId,
+                    sanitizedTitle,
+                    // PERBAIKAN AKHIR: Gunakan 'formatId' langsung karena sudah bertipe String
+                    formatId,
+                    onProgress,
+                  ),
                 ),
-              ),
-            ).then((filePath) {
-              if (filePath != null && mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text(
-                      'Video berhasil diunduh: $sanitizedTitle.mp4',
+              ).then((filePath) {
+                if (filePath != null && mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        'Video berhasil diunduh: $sanitizedTitle.mp4',
+                      ),
+                      backgroundColor: Colors.green,
                     ),
-                    backgroundColor: Colors.green,
-                  ),
-                );
-              } else if (mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Gagal mengunduh video'),
-                    backgroundColor: Colors.red,
-                  ),
-                );
-              }
-            });
-          },
-        ),
+                  );
+                } else if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Gagal mengunduh video'),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                }
+              });
+            },
+          ),
       );
     } catch (e) {
       debugPrint('Error downloading video: $e');
@@ -168,7 +166,6 @@ class _MusikPageOnlineState extends State<MusikPageOnline>
     }
   }
 
-  // ignore: unused_element
   void _showDownloadOptions(String videoId, String title) {
     showModalBottomSheet(
       context: context,
@@ -191,7 +188,7 @@ class _MusikPageOnlineState extends State<MusikPageOnline>
               _downloadVideo(videoId, title);
             },
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height:16),
         ],
       ),
     );
@@ -199,11 +196,7 @@ class _MusikPageOnlineState extends State<MusikPageOnline>
 
   @override
   Widget build(BuildContext context) {
-    // ====================================================================
-    // PERUBAHAN: TAMBAHKAN super.build(context)
-    // ====================================================================
     super.build(context);
-    // ====================================================================
     return Scaffold(
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
@@ -227,8 +220,8 @@ class _MusikPageOnlineState extends State<MusikPageOnline>
                     borderRadius: BorderRadius.circular(4),
                     child: Image.network(
                       song['thumbnail'],
-                      width: 50,
-                      height: 50,
+                      width: 90,
+                      height: 70,
                       fit: BoxFit.cover,
                       errorBuilder: (_, __, ___) => Container(
                         width: 50,
@@ -254,30 +247,35 @@ class _MusikPageOnlineState extends State<MusikPageOnline>
                   trailing: PopupMenuButton<String>(
                     icon: const Icon(Icons.more_vert),
                     onSelected: (value) {
-                      if (value == 'downloadaudio') {
-                        _downloadAudio(song['id'], song['title']);
-                      } else if (value == 'downloadvideo') {
-                        _downloadVideo(song['id'], song['title']);
+                      if (value == 'play') {
+                        final playerProvider = Provider.of<PlayerProvider>(context, listen: false);
+                        playerProvider.playMusic(
+                          videoId: song['id'],
+                          title: song['title'],
+                          channel: song['channel'],
+                        );
+                      } else if (value == 'download') {
+                        _showDownloadOptions(song['id'], song['title']);
                       }
                     },
                     itemBuilder: (context) => [
                       const PopupMenuItem(
-                        value: 'downloadaudio',
+                        value: 'play',
                         child: Row(
                           children: [
-                            Icon(Icons.audio_file_outlined),
+                            Icon(Icons.play_circle),
                             SizedBox(width: 8),
-                            Text('Unduh Audio'),
+                            Text('Putar'),
                           ],
                         ),
                       ),
                       const PopupMenuItem(
-                        value: 'downloadvideo',
+                        value: 'download',
                         child: Row(
                           children: [
-                            Icon(Icons.video_file_outlined),
+                            Icon(Icons.download),
                             SizedBox(width: 8),
-                            Text('Unduh Video'),
+                            Text('Unduh'),
                           ],
                         ),
                       ),
@@ -288,11 +286,7 @@ class _MusikPageOnlineState extends State<MusikPageOnline>
             ),
     );
   }
-  
-  // ====================================================================
-  // PERUBAHAN: OVERRIDE wantKeepAlive
-  // ====================================================================
+
   @override
   bool get wantKeepAlive => true;
-  // ====================================================================
 }

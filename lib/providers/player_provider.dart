@@ -1,14 +1,14 @@
+// lib/providers/player_provider.dart
+
 import 'package:flutter/material.dart';
 import 'package:miniplayer/miniplayer.dart';
-import 'package:video_player/video_player.dart'; // Tambahkan import ini
-// ignore: unused_import
-import 'package:provider/provider.dart';
+import 'package:video_player/video_player.dart';
 import 'package:chewie/chewie.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../services/ytdl_service.dart';
 
-// Pindahkan enum ke luar class agar bisa diakses dari mana saja
+// PERBAIKAN: Pindahkan enum ke luar class agar bisa diakses dari mana saja
 enum RepeatMode { off, one, all }
 
 class PlayerProvider extends ChangeNotifier {
@@ -45,8 +45,10 @@ class PlayerProvider extends ChangeNotifier {
   // State untuk loading
   bool _isLoadingNewSong = false;
 
-  // Map untuk menyimpan stream audio yang sudah di-preload
-  final Map<String, String> _preloadedAudioStreams = {};
+  // ==================== PERUBAHAN: CACHE AUDIO ====================
+  // Map untuk menyimpan URL yang sudah di-cache
+  final Map<String, String> _audioUrlCache = {};
+  // ==================== AKHIR CACHE AUDIO ====================
 
   // Getters
   AudioPlayer get audioPlayer => _audioPlayer;
@@ -173,6 +175,7 @@ class PlayerProvider extends ChangeNotifier {
   Future<void> _saveFavorites() async {
     try {
       final prefs = await SharedPreferences.getInstance();
+      // PERBAIKAN: Gunakan map().toList() yang lebih aman dan sederhana
       final favoritesJson = _favorites.map((song) => "${song['id']}|||${song['title']}|||${song['channel']}|||${song['thumbnail']}").toList();
       await prefs.setStringList('favorites', favoritesJson);
     } catch (e) {
@@ -224,6 +227,7 @@ class PlayerProvider extends ChangeNotifier {
   Future<void> _saveRecentlyPlayed() async {
     try {
       final prefs = await SharedPreferences.getInstance();
+      // PERBAIKAN: Gunakan map().toList() yang lebih aman dan sederhana
       final recentJson = _recentlyPlayed.map((song) => "${song['id']}|||${song['title']}|||${song['channel']}|||${song['thumbnail']}").toList();
       await prefs.setStringList('recently_played', recentJson);
     } catch (e) {
@@ -242,6 +246,7 @@ class PlayerProvider extends ChangeNotifier {
   }
   // ==================== AKHIR METODE LAGU TERAKHIR DIPUTAR ====================
 
+  // ==================== PERUBAHAN: FUNGSI playMusic DENGAN CACHE ====================
   Future<void> playMusic({
     required String videoId,
     required String title,
@@ -257,7 +262,6 @@ class PlayerProvider extends ChangeNotifier {
 
     debugPrint(">>> PERMINTAAN LAGU BARU: Melakukan reset total pemutar.");
     await _audioPlayer.stop();
-    _preloadedAudioStreams.clear();
     _position = Duration.zero;
     _duration = null;
     _isPlaying = false;
@@ -273,17 +277,29 @@ class PlayerProvider extends ChangeNotifier {
 
     try {
       debugPrint(">>> Fetching new stream for: $title");
-      final audioUrl = await YTDLService.getAudioStream(videoId);
+      
+      // Cek cache terlebih dahulu
+      String audioUrl;
+      if (_audioUrlCache.containsKey(videoId)) {
+        debugPrint(">>> Cache hit for audio URL: $videoId");
+        audioUrl = _audioUrlCache[videoId]!;
+      } else {
+        debugPrint(">>> Cache miss, fetching from API: $videoId");
+        audioUrl = await YTDLService.getAudioStream(videoId);
+        _audioUrlCache[videoId] = audioUrl; // Simpan ke cache
+      }
+      
       final videoInfoMap = await YTDLService.getInfoAsMap(videoId);
       
-      await _audioPlayer.setUrl(audioUrl);
+      // Gunakan LockCachingAudioSource untuk cache permanen
+      final cachingAudioSource = LockCachingAudioSource(Uri.parse(audioUrl));
+      await _audioPlayer.setAudioSource(cachingAudioSource);
       await _audioPlayer.play();
 
       _duration = videoInfoMap['duration'];
 
       await _fetchRelatedSongsAndSetQueue(videoId);
       
-      // ==================== TAMBAHKAN KE RECENTLY PLAYED ====================
       final currentSong = {
         'id': videoId,
         'title': title,
@@ -291,7 +307,6 @@ class PlayerProvider extends ChangeNotifier {
         'thumbnail': 'https://i.ytimg.com/vi/$videoId/hqdefault.jpg',
       };
       addToRecentlyPlayed(currentSong);
-      // ==================== AKHIR TAMBAHKAN KE RECENTLY PLAYED ====================
     } catch (e) {
       debugPrint('Error loading music: $e');
       _isLoadingNewSong = false;
@@ -299,6 +314,7 @@ class PlayerProvider extends ChangeNotifier {
       hidePlayer();
     }
   }
+  // ==================== AKHIR FUNGSI playMusic ====================
 
   Future<void> _fetchRelatedSongsAndSetQueue(String currentVideoId) async {
     try {
@@ -332,6 +348,7 @@ class PlayerProvider extends ChangeNotifier {
     }
   }
 
+  // ==================== PERUBAHAN: FUNGSI PRELOAD DENGAN CACHE ====================
   void _preloadNextSongs() {
     if (_relatedSongs.isEmpty) return;
 
@@ -341,18 +358,22 @@ class PlayerProvider extends ChangeNotifier {
     final nextVideoId1 = _relatedSongs[nextIndex1]['id'];
     final nextVideoId2 = _relatedSongs[nextIndex2]['id'];
 
-    if (!_preloadedAudioStreams.containsKey(nextVideoId1)) {
+    // Preload hanya jika belum ada di cache
+    if (!_audioUrlCache.containsKey(nextVideoId1)) {
       YTDLService.getAudioStream(nextVideoId1).then((url) {
-        _preloadedAudioStreams[nextVideoId1] = url;
+        _audioUrlCache[nextVideoId1] = url;
+        debugPrint(">>> Preloaded and cached audio for: $nextVideoId1");
       });
     }
 
-    if (!_preloadedAudioStreams.containsKey(nextVideoId2)) {
+    if (!_audioUrlCache.containsKey(nextVideoId2)) {
       YTDLService.getAudioStream(nextVideoId2).then((url) {
-        _preloadedAudioStreams[nextVideoId2] = url;
+        _audioUrlCache[nextVideoId2] = url;
+        debugPrint(">>> Preloaded and cached audio for: $nextVideoId2");
       });
     }
   }
+  // ==================== AKHIR FUNGSI PRELOAD ====================
 
   void skipToNext() => _playNextInQueue();
   void skipToPrevious() => _playPreviousInQueue();
@@ -394,7 +415,7 @@ class PlayerProvider extends ChangeNotifier {
     await _audioPlayer.pause();
 
     try {
-      final videoUrl = await YTDLService.getVideoStream(_currentVideoId!);
+      final videoUrl = await YTDLService.getVideoStream(_currentVideoId!, '1080');
       _videoController = VideoPlayerController.networkUrl(Uri.parse(videoUrl));
       await _videoController!.initialize();
       _chewieController = ChewieController(
