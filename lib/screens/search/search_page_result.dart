@@ -1,5 +1,3 @@
-// lib/screens/search/search_page_result.dart
-
 // ignore_for_file: use_build_context_synchronously
 
 import 'package:flutter/material.dart';
@@ -32,68 +30,76 @@ class _SearchPageResultState extends State<SearchPageResult>
   }
 
   // --- FUNGSI UNDUHAN (SAMA SEPERTI HALAMAN LAIN) ---
-  Future<void> _downloadAudio(String videoId, String title) async {
+  Future<void> _downloadAudio(
+    String videoId,
+    String title,
+    String channel,
+    String thumbnailUrl,
+  ) async {
     final hasPermission = await DownloadService.requestStoragePermission();
     if (!hasPermission) {
-      if (mounted) {
-        showDialog(
-          context: context,
-          builder: (context) => const PermissionDialog(),
-        );
-      }
+      showDialog(
+        context: context,
+        builder: (context) => const PermissionDialog(),
+      );
       return;
     }
 
     final sanitizedTitle = DownloadService.sanitizeFileName(title);
 
-    if (mounted) {
-      showDialog(
-        context: context,
-        barrierDismissible: false,
-        builder: (context) => DownloadProgressDialog(
-          title: 'Mengunduh Audio: $title',
-          downloadFunction: (onProgress) => DownloadService.downloadAudio(
-            videoId,
-            sanitizedTitle,
-            onProgress,
-          ),
-        ),
-      ).then((filePath) {
+    // Ganti showDialog dengan ini:
+    DownloadProgressSnackBar.show(
+      context,
+      title: 'Mengunduh Audio: $title',
+      downloadFunction: (onProgress) => DownloadService.downloadAudio(
+        videoId,
+        title,
+        channel,
+        thumbnailUrl,
+        onProgress,
+      ),
+      onComplete: (filePath) {
         if (filePath != null && mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('Audio berhasil diunduh: $sanitizedTitle.mp3'),
+              content: Text('Audio berhasil diunduh: ${title}.mp3'),
               backgroundColor: Colors.green,
             ),
           );
-        } else if (mounted) {
+        }
+      },
+      onError: (error) {
+        if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Gagal mengunduh audio'),
+            SnackBar(
+              content: Text('Gagal mengunduh audio: $error'),
               backgroundColor: Colors.red,
             ),
           );
         }
-      });
-    }
+      },
+    );
   }
 
-  Future<void> _downloadVideo(String videoId, String title) async {
+  Future<void> _downloadVideo(
+    String videoId,
+    String title,
+    String channel,
+    String thumbnailUrl,
+  ) async {
     final hasPermission = await DownloadService.requestStoragePermission();
     if (!hasPermission) {
-      if (mounted) {
-        showDialog(
-          context: context,
-          builder: (context) => const PermissionDialog(),
-        );
-      }
+      showDialog(
+        context: context,
+        builder: (context) => const PermissionDialog(),
+      );
       return;
     }
 
     try {
-      final formats = await YTDLService.getVideoResolutions(videoId);
+      final resolutions = await YTDLService.getVideoResolutions(videoId);
 
-      if (formats.isEmpty && mounted) {
+      if (resolutions.isEmpty && mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Tidak ada format video yang tersedia'),
@@ -103,47 +109,17 @@ class _SearchPageResultState extends State<SearchPageResult>
         return;
       }
 
-      if (mounted) {
-        showDialog(
-          context: context,
-          builder: (context) => VideoQualityDialog(
-            formats: formats,
-            onQualitySelected: (formatId) {
-              final sanitizedTitle = DownloadService.sanitizeFileName(title);
-              showDialog(
-                context: context,
-                barrierDismissible: false,
-                builder: (context) => DownloadProgressDialog(
-                  title: 'Mengunduh Video: $title',
-                  downloadFunction: (onProgress) => DownloadService.downloadVideo(
-                    videoId,
-                    sanitizedTitle,
-                    // PERBAIKAN AKHIR: Gunakan 'formatId' langsung karena sudah bertipe String
-                    formatId,
-                    onProgress,
-                  ),
-                ),
-              ).then((filePath) {
-                if (filePath != null && mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('Video berhasil diunduh: $sanitizedTitle.mp4'),
-                      backgroundColor: Colors.green,
-                    ),
-                  );
-                } else if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Gagal mengunduh video'),
-                      backgroundColor: Colors.red,
-                    ),
-                  );
-                }
-              });
-            },
-          ),
-        );
-      }
+      showDialog(
+        context: context,
+        builder: (context) => VideoQualityDialog(
+          formats: resolutions,
+          onQualitySelected: (formatId) {
+            final sanitizedTitle = DownloadService.sanitizeFileName(title);
+
+            DownloadService.downloadAudio;
+          },
+        ),
+      );
     } catch (e) {
       debugPrint('Error downloading video: $e');
       if (mounted) {
@@ -157,7 +133,7 @@ class _SearchPageResultState extends State<SearchPageResult>
     }
   }
 
-  void _showDownloadOptions(String videoId, String title) {
+  void _showDownloadOptions(String videoId, String title, String channel, String thumbnailUrl) {
     showModalBottomSheet(
       context: context,
       builder: (context) => Column(
@@ -168,7 +144,7 @@ class _SearchPageResultState extends State<SearchPageResult>
             title: const Text('Unduh Audio'),
             onTap: () {
               Navigator.pop(context);
-              _downloadAudio(videoId, title);
+              _downloadAudio(videoId, title, channel, thumbnailUrl);
             },
           ),
           ListTile(
@@ -176,7 +152,7 @@ class _SearchPageResultState extends State<SearchPageResult>
             title: const Text('Unduh Video'),
             onTap: () {
               Navigator.pop(context);
-              _downloadVideo(videoId, title);
+              _downloadVideo(videoId, title, channel, thumbnailUrl);
             },
           ),
           const SizedBox(height: 16),
@@ -253,7 +229,7 @@ class _SearchPageResultState extends State<SearchPageResult>
                         channel: video['channel'], // Asumsikan ini adalah Map
                       );
                     } else if (value == 'download') {
-                      _showDownloadOptions(video['id'], video['title']); // Asumsikan ini adalah Map
+                      _showDownloadOptions(video['id'], video['title'], video['channel'], video['thumbnail']); // Asumsikan ini adalah Map
                     }
                   },
                   itemBuilder: (context) => [

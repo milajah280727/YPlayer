@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:yplayer/main.dart';
+import 'package:yplayer/main.dart'; // Impor HalamanUtama dari main.dart
 import 'package:yplayer/screens/offline/beranda.dart';
-
-//screens
 import 'package:yplayer/screens/offline/playlist_page_offline.dart';
+import 'package:yplayer/widgets/mini_player_widget.dart';
 
 void main() {
   runApp(const MyAppOffline());
@@ -33,28 +32,38 @@ class HalamanUtamaOffline extends StatefulWidget {
   State<HalamanUtamaOffline> createState() => _HalamanUtamaOfflineState();
 }
 
-class _HalamanUtamaOfflineState extends State<HalamanUtamaOffline> {
-  // 当前选中的页面索引
-  int _currentIndex = 0;
-  
-  // 页面标题列表
+class _HalamanUtamaOfflineState extends State<HalamanUtamaOffline>
+    with SingleTickerProviderStateMixin {
+  late TabController _tabController;
   final List<String> _judulTab = ["Beranda", "Playlist"];
   
-  // 页面列表
-  final List<Widget> _pages = [
-    const BerandaPageOffline(),
-    const PlaylistPageOffline()
-  ];
+  // Tambahkan GlobalKey untuk Scaffold
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
+
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: 2, vsync: this);
+    _tabController.addListener(() {
+      if (!mounted) return;
+      setState(() {});
+    });
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
+    // Ambil padding untuk menghindari area sistem
+    final padding = MediaQuery.of(context).padding;
+    
     return Scaffold(
-      appBar: AppBar(
-        // 根据当前选中的页面索引显示标题
-        title: Text(_judulTab[_currentIndex]),
-        foregroundColor: Colors.white,
-        backgroundColor: Colors.pink,
-      ),
+      // Tambahkan key ke Scaffold
+      key: _scaffoldKey,
       drawer: Drawer(
         backgroundColor: Colors.white,
         child: ListView(
@@ -73,7 +82,7 @@ class _HalamanUtamaOfflineState extends State<HalamanUtamaOffline> {
                 Navigator.pop(context);
                 Navigator.pushAndRemoveUntil(
                   context, 
-                  MaterialPageRoute(builder: (context) => HalamanUtama()), 
+                  MaterialPageRoute(builder: (context) => const HalamanUtama()), 
                   (route) => false
                 );
               },
@@ -88,32 +97,87 @@ class _HalamanUtamaOfflineState extends State<HalamanUtamaOffline> {
           ],
         ),
       ),
-      // 使用IndexedStack来管理页面切换
-      body: IndexedStack(
-        index: _currentIndex,
-        children: _pages,
-      ),
-      // 底部导航栏
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _currentIndex,
-        onTap: (index) {
-          setState(() {
-            _currentIndex = index;
-          });
-        },
-        selectedItemColor: Colors.pink,
-        unselectedItemColor: Colors.grey,
-        backgroundColor: Colors.white,
-        items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.home),
-            label: 'Beranda',
+      body: Stack(
+        children: [
+          Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _buildCustomAppBar(context, padding),
+              Expanded(
+                child: Padding(
+                  padding: EdgeInsets.only(bottom: padding.bottom),
+                  child: TabBarView(
+                    controller: _tabController,
+                    children: const [
+                      BerandaPageOffline(),
+                      PlaylistPageOffline(),
+                    ],
+                  ),
+                ),
+              ),
+            ],
           ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.playlist_add_check),
-            label: 'Playlist',
+          const Positioned(
+            left: 0,
+            right: 0,
+            bottom: 0,
+            child: MiniPlayerWidget(),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildCustomAppBar(BuildContext context, EdgeInsets padding) {
+    return Container(
+      decoration: const BoxDecoration(
+        color: Colors.pink,
+      ),
+      child: Padding(
+        padding: EdgeInsets.only(top: padding.top, left: 8.0, right: 8.0),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                IconButton(
+                  icon: const Icon(Icons.menu, color: Colors.white),
+                  // Gunakan GlobalKey untuk membuka drawer
+                  onPressed: () => _scaffoldKey.currentState?.openDrawer(),
+                ),
+                Text(
+                  _judulTab[_tabController.index],
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.search, color: Colors.white),
+                  onPressed: () {
+                    // Tambahkan fungsi pencarian jika diperlukan
+                    // Navigator.push(
+                    //   context,
+                    //   MaterialPageRoute(builder: (context) => const SearchPage()),
+                    // );
+                  },
+                ),
+              ],
+            ),
+            TabBar(
+              controller: _tabController,
+              labelColor: Colors.black,
+              unselectedLabelColor: Colors.white,
+              indicatorColor: Colors.black,
+              tabs: const [
+                Tab(icon: Icon(Icons.home)),
+                Tab(icon: Icon(Icons.playlist_add_check)),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }

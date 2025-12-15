@@ -70,8 +70,9 @@ class VideoQualityDialog extends StatelessWidget {
               subtitle: Text('$fileSize ${fps.isNotEmpty ? '• $fps' : ''}'),
               onTap: () {
                 Navigator.of(context).pop();
-                // Kirim format_id dari format yang dipilih
-                onQualitySelected(format['format_id']);
+                // PERBAIKAN: Gunakan resolution sebagai pengganti format_id
+                final qualityId = format['format_id'] ?? format['resolution'] ?? '720';
+                onQualitySelected(qualityId.toString());
               },
             );
           },

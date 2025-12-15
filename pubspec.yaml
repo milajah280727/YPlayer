@@ -35,7 +35,7 @@ dependencies:
   
   # Dependencies for Player
   provider: ^6.1.2
-  youtube_explode_dart: ^2.0.0
+  youtube_explode_dart: ^2.3.6
   video_player: ^2.9.1
   chewie: ^1.7.3
   miniplayer: ^1.0.1

@@ -19,68 +19,76 @@ class TeratasPageOnline extends StatefulWidget {
 class _TeratasPageOnlineState extends State<TeratasPageOnline>
     with AutomaticKeepAliveClientMixin {
   
-  Future<void> _downloadAudio(String videoId, String title) async {
+  Future<void> _downloadAudio(
+    String videoId,
+    String title,
+    String channel,
+    String thumbnailUrl,
+  ) async {
     final hasPermission = await DownloadService.requestStoragePermission();
     if (!hasPermission) {
-      if (mounted) {
-        showDialog(
-          context: context,
-          builder: (context) => const PermissionDialog(),
-        );
-      }
+      showDialog(
+        context: context,
+        builder: (context) => const PermissionDialog(),
+      );
       return;
     }
 
-    final sanitizedTitle = DownloadService.sanitizeFileName(title);
+    DownloadService.sanitizeFileName(title);
 
-    if (mounted) {
-      showDialog(
-        context: context,
-        barrierDismissible: false,
-        builder: (context) => DownloadProgressDialog(
-          title: 'Mengunduh Audio: $title',
-          downloadFunction: (onProgress) => DownloadService.downloadAudio(
-            videoId,
-            sanitizedTitle,
-            onProgress,
-          ),
-        ),
-      ).then((filePath) {
+    // Ganti showDialog dengan ini:
+    DownloadProgressSnackBar.show(
+      context,
+      title: 'Mengunduh Audio: $title',
+      downloadFunction: (onProgress) => DownloadService.downloadAudio(
+        videoId,
+        title,
+        channel,
+        thumbnailUrl,
+        onProgress,
+      ),
+      onComplete: (filePath) {
         if (filePath != null && mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('Audio berhasil diunduh: $sanitizedTitle.mp3'),
+              content: Text('Audio berhasil diunduh: ${title}.mp3'),
               backgroundColor: Colors.green,
             ),
           );
-        } else if (mounted) {
+        }
+      },
+      onError: (error) {
+        if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Gagal mengunduh audio'),
+            SnackBar(
+              content: Text('Gagal mengunduh audio: $error'),
               backgroundColor: Colors.red,
             ),
           );
         }
-      });
-    }
+      },
+    );
   }
 
-  Future<void> _downloadVideo(String videoId, String title) async {
+  Future<void> _downloadVideo(
+    String videoId,
+    String title,
+    String channel,
+    String thumbnailUrl,
+  ) async {
     final hasPermission = await DownloadService.requestStoragePermission();
     if (!hasPermission) {
-      if (mounted) {
-        showDialog(
-          context: context,
-          builder: (context) => const PermissionDialog(),
-        );
-      }
+      showDialog(
+        context: context,
+        builder: (context) => const PermissionDialog(),
+      );
       return;
     }
 
     try {
-      final formats = await YTDLService.getVideoResolutions(videoId);
+      final resolutions = await YTDLService.getVideoResolutions(videoId);
 
-      if (formats.isEmpty && mounted) {
+      if (resolutions.isEmpty && mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Tidak ada format video yang tersedia'),
@@ -90,49 +98,17 @@ class _TeratasPageOnlineState extends State<TeratasPageOnline>
         return;
       }
 
-      if (mounted) {
-        showDialog(
-          context: context,
-          builder: (context) => VideoQualityDialog(
-            formats: formats,
-            onQualitySelected: (formatId) {
-              final sanitizedTitle = DownloadService.sanitizeFileName(title);
-              showDialog(
-                context: context,
-                barrierDismissible: false,
-                builder: (context) => DownloadProgressDialog(
-                  title: 'Mengunduh Video: $title',
-                  downloadFunction: (onProgress) => DownloadService.downloadVideo(
-                    videoId,
-                    sanitizedTitle,
-                    // PERBAIKAN AKHIR: Gunakan 'formatId' langsung karena sudah bertipe String
-                    formatId,
-                    onProgress,
-                  ),
-                ),
-              ).then((filePath) {
-                if (filePath != null && mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(
-                        'Video berhasil diunduh: $sanitizedTitle.mp4',
-                      ),
-                      backgroundColor: Colors.green,
-                    ),
-                  );
-                } else if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Gagal mengunduh video'),
-                      backgroundColor: Colors.red,
-                    ),
-                  );
-                }
-              });
-            },
-          ),
-        );
-      }
+      showDialog(
+        context: context,
+        builder: (context) => VideoQualityDialog(
+          formats: resolutions,
+          onQualitySelected: (formatId) {
+            DownloadService.sanitizeFileName(title);
+
+            DownloadService.downloadAudio;
+          },
+        ),
+      );
     } catch (e) {
       debugPrint('Error downloading video: $e');
       if (mounted) {
@@ -146,7 +122,7 @@ class _TeratasPageOnlineState extends State<TeratasPageOnline>
     }
   }
 
-  void _showDownloadOptions(String videoId, String title) {
+  void _showDownloadOptions(String videoId, String title, String channel, String thumbnailUrl) {
     showModalBottomSheet(
       context: context,
       builder: (context) => Column(
@@ -157,7 +133,7 @@ class _TeratasPageOnlineState extends State<TeratasPageOnline>
             title: const Text('Unduh Audio'),
             onTap: () {
               Navigator.pop(context);
-              _downloadAudio(videoId, title);
+              _downloadAudio(videoId, title, channel, thumbnailUrl);
             },
           ),
           ListTile(
@@ -165,7 +141,7 @@ class _TeratasPageOnlineState extends State<TeratasPageOnline>
             title: const Text('Unduh Video'),
             onTap: () {
               Navigator.pop(context);
-              _downloadVideo(videoId, title);
+              _downloadVideo(videoId, title, channel, thumbnailUrl);
             },
           ),
           const SizedBox(height: 16),
@@ -240,7 +216,7 @@ class _TeratasPageOnlineState extends State<TeratasPageOnline>
                               channel: song['channel'],
                             );
                           } else if (value == 'download') {
-                            _showDownloadOptions(song['id'], song['title']);
+                            _showDownloadOptions(song['id'], song['title'], song['channel'], song['thumbnail']);
                           }
                         },
                         itemBuilder: (context) => [

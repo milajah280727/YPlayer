@@ -5,7 +5,7 @@
 
 class ApiService {
   // Ganti dengan URL backend streaming Anda
-  static const String _baseUrl = 'https://announcements-wto-cologne-reputation.trycloudflare.com';
+  static const String _baseUrl = 'https://ministry-futures-leaves-clinic.trycloudflare.com';
 
   // --- Endpoint untuk Mendapatkan Daftar Format/Resolusi ---
   // Digunakan oleh YTDLService untuk mendapatkan pilihan kualitas video
@@ -30,10 +30,11 @@ class ApiService {
 
   // --- Endpoint untuk Unduhan Audio ---
   // Digunakan oleh DownloadService.downloadAudio()
-  static String getDownloadAudioEndpoint(String videoId) {
-    final url = 'https://www.youtube.com/watch?v=$videoId';
-    return '$_baseUrl/download-audio?url=$url';
-  }
+static String getDownloadAudioEndpoint(String videoId) {
+  final url = 'https://www.youtube.com/watch?v=$videoId';
+  // Tidak perlu encoding manual, Dio akan menangani ini
+  return '$_baseUrl/download-audio?url=$url';
+}
 
   // --- Endpoint untuk Unduhan Video ---
   // Digunakan oleh DownloadService.downloadVideo()

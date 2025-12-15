@@ -1,11 +1,10 @@
-// lib/providers/player_provider.dart
-
 import 'package:flutter/material.dart';
 import 'package:miniplayer/miniplayer.dart';
 import 'package:video_player/video_player.dart';
 import 'package:chewie/chewie.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:io';
 import '../services/ytdl_service.dart';
 
 // PERBAIKAN: Pindahkan enum ke luar class agar bisa diakses dari mana saja
@@ -415,7 +414,9 @@ class PlayerProvider extends ChangeNotifier {
     await _audioPlayer.pause();
 
     try {
+      // Gunakan youtube_explode_dart langsung untuk mendapatkan stream video
       final videoUrl = await YTDLService.getVideoStream(_currentVideoId!, '1080');
+      
       _videoController = VideoPlayerController.networkUrl(Uri.parse(videoUrl));
       await _videoController!.initialize();
       _chewieController = ChewieController(
@@ -482,6 +483,104 @@ class PlayerProvider extends ChangeNotifier {
     _chewieController = null;
     _videoController = null;
   }
+
+  // ==================== METODE UNTUK MEMUTAR MEDIA LOKAL ====================
+  /// Memutar file audio dari penyimpanan lokal.
+  Future<void> playLocalAudio({
+    required String path,
+    required String title,
+    required String channel,
+    required String videoId,
+  }) async {
+    // Sembunyikan video jika sedang diputar
+    if (_isPlayingVideo) {
+      await switchToAudio();
+    }
+
+    _isLoadingNewSong = true;
+    notifyListeners();
+
+    debugPrint(">>> MEMUTAR AUDIO LOKAL: $title");
+    
+    await _audioPlayer.stop();
+    _position = Duration.zero;
+    _duration = null;
+    _isPlaying = false;
+
+    _isPlayerVisible = true;
+    _currentVideoId = videoId;
+    _currentTitle = title;
+    _currentChannel = channel;
+    notifyListeners();
+
+    try {
+      await _audioPlayer.setFilePath(path);
+      await _audioPlayer.play();
+      
+      // Durasi akan otomatis di-set oleh just_audio
+      _isLoadingNewSong = false;
+      notifyListeners();
+    } catch (e) {
+      debugPrint('Error loading local audio: $e');
+      _isLoadingNewSong = false;
+      notifyListeners();
+      hidePlayer();
+    }
+  }
+
+  /// Memutar file video dari penyimpanan lokal.
+  Future<void> playLocalVideo({
+    required String path,
+    required String title,
+    required String channel,
+    required String videoId,
+  }) async {
+    _isLoadingNewSong = true;
+    notifyListeners();
+
+    debugPrint(">>> MEMUTAR VIDEO LOKAL: $title");
+    
+    await _audioPlayer.stop();
+    _position = Duration.zero;
+    _duration = null;
+    _isPlaying = false;
+
+    _disposeVideoControllers();
+    _isPlayingVideo = false;
+    _isPlayerVisible = true;
+
+    _currentVideoId = videoId;
+    _currentTitle = title;
+    _currentChannel = channel;
+    notifyListeners();
+
+    try {
+      _videoController = VideoPlayerController.file(File(path));
+      await _videoController!.initialize();
+      
+      _chewieController = ChewieController(
+        videoPlayerController: _videoController!,
+        autoPlay: true,
+        materialProgressColors: ChewieProgressColors(
+          playedColor: Colors.pink,
+          handleColor: Colors.pinkAccent,
+        ),
+        allowMuting: false,
+        allowFullScreen: true, // Izinkan fullscreen untuk video lokal
+        showControls: true,
+      );
+      
+      _isPlayingVideo = true;
+      _isLoadingNewSong = false;
+      notifyListeners();
+    } catch (e) {
+      debugPrint('Error loading local video: $e');
+      _isLoadingNewSong = false;
+      notifyListeners();
+      hidePlayer();
+    }
+  }
+  // ==================== AKHIR METODE MEDIA LOKAL ====================
 
   @override
   void dispose() {

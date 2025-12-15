@@ -9,9 +9,11 @@ import 'package:yplayer/screens/online/favorit.dart';
 import 'package:yplayer/screens/online/musik.dart';
 import 'package:yplayer/screens/online/teratas.dart';
 import 'package:yplayer/screens/search/search_page.dart';
+import 'package:yplayer/services/download_service.dart';
 import 'package:yplayer/widgets/mini_player_widget.dart';
 
 void main() {
+    DownloadService.init();
   runApp(
     MultiProvider(
       providers: [
