@@ -1,4 +1,4 @@
-// ignore_for_file: use_build_context_synchronously
+// ignore_for_file: use_build_context_synchronously, unused_local_variable, unnecessary_brace_in_string_interps
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';

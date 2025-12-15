@@ -1,4 +1,4 @@
-// ignore_for_file: use_build_context_synchronously
+// ignore_for_file: use_build_context_synchronously, unused_local_variable
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -62,6 +62,7 @@ class _SearchPageResultState extends State<SearchPageResult>
         if (filePath != null && mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
+              // ignore: unnecessary_brace_in_string_interps
               content: Text('Audio berhasil diunduh: ${title}.mp3'),
               backgroundColor: Colors.green,
             ),

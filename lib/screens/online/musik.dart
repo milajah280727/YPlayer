@@ -1,4 +1,4 @@
-// ignore_for_file: use_build_context_synchronously, duplicate_ignore
+// ignore_for_file: use_build_context_synchronously, duplicate_ignore, unnecessary_brace_in_string_interps, unused_local_variable
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -61,6 +61,7 @@ class _MusikPageOnlineState extends State<MusikPageOnline>
       return;
     }
 
+    // ignore: unused_local_variable
     final sanitizedTitle = DownloadService.sanitizeFileName(title);
 
     // Ganti showDialog dengan ini:
