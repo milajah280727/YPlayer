@@ -9,7 +9,7 @@ import 'local_media_service.dart';
 class DownloadService {
   static late Dio _dio;
   static const String _baseUrl =
-      'https://ministry-futures-leaves-clinic.trycloudflare.com';
+      'https://compile-surge-halloween-memorabilia.trycloudflare.com';
 
   // Inisialisasi Dio dengan konfigurasi yang tepat
   static void initialize() {
@@ -47,32 +47,28 @@ class DownloadService {
   }
 
   // Fungsi untuk memeriksa dan meminta izin penyimpanan
+    // Fungsi untuk memeriksa dan meminta izin penyimpanan
   static Future<bool> requestStoragePermission() async {
     try {
       if (Platform.isAndroid) {
         final androidInfo = await DeviceInfoPlugin().androidInfo;
         final sdkInt = androidInfo.version.sdkInt;
 
+        // Android 13 (API 33) dan ke atas: Gunakan izin media granular
         if (sdkInt >= 33) {
           final audioPermission = await Permission.audio.request();
           final videoPermission = await Permission.videos.request();
-          final photosPermission = await Permission.photos.request();
 
-          return audioPermission.isGranted ||
-              videoPermission.isGranted ||
-              photosPermission.isGranted;
-        } else if (sdkInt >= 30) {
-          final storagePermission = await Permission.storage.request();
-          final manageStoragePermission = await Permission.manageExternalStorage
-              .request();
-
-          return storagePermission.isGranted ||
-              manageStoragePermission.isGranted;
-        } else {
+          // Berikan akses jika salah satu izin relevan diberikan
+          return audioPermission.isGranted || videoPermission.isGranted;
+        }
+        // Android 12 (API 32) dan ke bawah: Gunakan izin penyimpanan lama
+        else {
           final storagePermission = await Permission.storage.request();
           return storagePermission.isGranted;
         }
       } else if (Platform.isIOS) {
+        // iOS tidak memerlukan izin eksplisit untuk mengakses dokumen di sandbox-nya sendiri
         return true;
       }
 
@@ -82,7 +78,6 @@ class DownloadService {
       return false;
     }
   }
-
   // Fungsi untuk mendapatkan direktori penyimpanan yang sesuai
   static Future<Directory?> getStorageDirectory() async {
     try {
@@ -180,7 +175,7 @@ class DownloadService {
     String videoId,
     String title,
     String channel,
-    String thumbnailUrl, // Tambahkan parameter thumbnailUrl
+    String thumbnailUrl,
     Function(double) onProgress,
   ) async {
     try {
@@ -196,12 +191,12 @@ class DownloadService {
         return null;
       }
 
-      // PERBAIKAN: Gunakan videoId sebagai nama file agar sesuai dengan thumbnail
-      final fileName = '$videoId.mp3';
+      // PERUBAHAN: Gunakan judul yang sudah dibersihkan sebagai nama file
+      final sanitizedTitle = sanitizeFileName(title);
+      final fileName = '$sanitizedTitle.mp3';
       final filePath = '${directory.path}/$fileName';
 
-      // PERBAIKAN: Gunakan query parameters bukan FormData
-      debugPrint('Starting audio download for videoId: $videoId');
+      debugPrint('Starting audio download for title: $sanitizedTitle');
       debugPrint('Download URL: $_baseUrl/download-audio');
       debugPrint('Query parameters: url=https://www.youtube.com/watch?v=$videoId, quality=best');
 
@@ -219,7 +214,7 @@ class DownloadService {
           }
         },
         options: Options(
-          method: 'GET', // Kembali ke GET
+          method: 'GET',
           receiveTimeout: const Duration(minutes: 30),
         ),
       );
@@ -253,7 +248,6 @@ class DownloadService {
       return filePath;
     } catch (e) {
       debugPrint('Error downloading audio: $e');
-      // Tambahkan detail error
       if (e is DioException) {
         debugPrint('Error response: ${e.response?.data}');
         debugPrint('Error headers: ${e.response?.headers}');
@@ -268,7 +262,7 @@ class DownloadService {
     String videoId,
     String title,
     String channel,
-    String thumbnailUrl, // Tambahkan parameter thumbnailUrl
+    String thumbnailUrl,
     String formatId,
     Function(double) onProgress,
   ) async {
@@ -285,12 +279,12 @@ class DownloadService {
         return null;
       }
 
-      // PERBAIKAN: Gunakan videoId sebagai nama file agar sesuai dengan thumbnail
-      final fileName = '$videoId.mp4';
+      // PERUBAHAN: Gunakan judul yang sudah dibersihkan sebagai nama file
+      final sanitizedTitle = sanitizeFileName(title);
+      final fileName = '$sanitizedTitle.mp4';
       final filePath = '${directory.path}/$fileName';
 
-      // PERBAIKAN: Gunakan query parameters bukan FormData
-      debugPrint('Starting video download for videoId: $videoId');
+      debugPrint('Starting video download for title: $sanitizedTitle');
       debugPrint('Download URL: $_baseUrl/download');
       debugPrint('Query parameters: url=https://www.youtube.com/watch?v=$videoId, format_id=$formatId');
 
@@ -308,7 +302,7 @@ class DownloadService {
           }
         },
         options: Options(
-          method: 'GET', // Kembali ke GET
+          method: 'GET',
           receiveTimeout: const Duration(minutes: 30),
         ),
       );
@@ -342,7 +336,6 @@ class DownloadService {
       return filePath;
     } catch (e) {
       debugPrint('Error downloading video: $e');
-      // Tambahkan detail error
       if (e is DioException) {
         debugPrint('Error response: ${e.response?.data}');
         debugPrint('Error headers: ${e.response?.headers}');

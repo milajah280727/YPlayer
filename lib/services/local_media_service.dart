@@ -98,118 +98,66 @@ class LocalMediaService {
   }
 
   /// Mendapatkan semua media yang diunduh, diurutkan dari yang terbaru.
+  /// LOGIKA BARU: Membaca dari riwayat dan memverifikasi keberadaan file.
   static Future<List<Map<String, dynamic>>> getDownloadedMedia() async {
     try {
       final directory = await getStorageDirectory();
       if (directory == null) return [];
 
-      final List<FileSystemEntity> files = directory.listSync();
-      final List<Map<String, dynamic>> mediaList = [];
-
-      // Dapatkan riwayat unduhan dan urutkan berdasarkan timestamp
+      // 1. Muat riwayat unduhan dari SharedPreferences
       final prefs = await SharedPreferences.getInstance();
       final List<String> downloadHistory =
           prefs.getStringList(_downloadHistoryKey) ?? [];
+      
+      final List<Map<String, dynamic>> mediaList = [];
 
-      // Buat map untuk pencarian cepat metadata dari riwayat
-      final Map<String, Map<String, String>> historyMap = {};
+      // 2. Iterasi melalui riwayat, bukan file sistem secara langsung
       for (final item in downloadHistory) {
         final parts = item.split('|||');
-        if (parts.length >= 5) {
-          historyMap[parts[0]] = {
-            'title': parts[1],
-            'channel': parts[2],
-            'thumbnail': parts[3],
-            'timestamp': parts[4],
-          };
-        }
-      }
+        if (parts.length < 4) continue; // Lewati entri yang tidak valid
 
-      // Kelompokkan file berdasarkan nama dasar (tanpa ekstensi)
-      final Map<String, List<File>> groupedFiles = {};
-      for (final file in files) {
-        if (file is File) {
-          final fileName = file.path.split('/').last;
-          final baseName = fileName.contains('.')
-              ? fileName.substring(0, fileName.lastIndexOf('.'))
-              : fileName;
-          if (!groupedFiles.containsKey(baseName)) {
-            groupedFiles[baseName] = [];
-          }
-          groupedFiles[baseName]!.add(file);
-        }
-      }
+        final videoId = parts[0];
+        final title = parts[1];
+        final channel = parts[2];
+        final thumbnailUrl = parts[3];
 
-      // Proses setiap kelompok file
-      for (final entry in groupedFiles.entries) {
-        final baseName = entry.key;
-        final filesInGroup = entry.value;
+        // 3. Bangun kembali nama file yang diharapkan menggunakan judul yang disimpan
+        final sanitizedTitle = sanitizeFileName(title);
+        final audioFileName = '$sanitizedTitle.mp3';
+        final videoFileName = '$sanitizedTitle.mp4';
 
-        File? audioFile;
-        File? videoFile;
-        File? thumbnailFile;
+        // 4. Periksa keberadaan file audio dan video
+        final audioFile = File('${directory.path}/$audioFileName');
+        final videoFile = File('${directory.path}/$videoFileName');
 
-        for (final file in filesInGroup) {
-          if (file.path.endsWith('.mp3')) {
-            audioFile = file;
-          } else if (file.path.endsWith('.mp4') || file.path.endsWith('.webm')) {
-            videoFile = file;
-          } else if (file.path.endsWith('.jpg') || file.path.endsWith('.png')) {
-            thumbnailFile = file;
-          }
-        }
+        File? primaryFile;
+        String type;
 
-        final primaryFile = audioFile ?? videoFile;
-        if (primaryFile == null) continue;
-
-        // Coba ekstrak videoId dari baseName
-        String videoId = baseName;
-        
-        // Jika baseName adalah videoId (alphanumeric)
-        if (RegExp(r'^[a-zA-Z0-9_-]+$').hasMatch(baseName)) {
-          videoId = baseName;
+        if (await audioFile.exists()) {
+          primaryFile = audioFile;
+          type = 'audio';
+        } else if (await videoFile.exists()) {
+          primaryFile = videoFile;
+          type = 'video';
         } else {
-          // Coba cari videoId dari historyMap berdasarkan title
-          final foundEntry = historyMap.entries.firstWhere(
-            (entry) => sanitizeFileName(entry.value['title']!) == baseName,
-            orElse: () => MapEntry('', {}),
-          );
-          if (foundEntry.key.isNotEmpty) {
-            videoId = foundEntry.key;
-          }
+          // PERBAIKAN: Jika tidak ada file yang ditemukan, lanjut ke item berikutnya
+          continue;
         }
 
-        final historyData = historyMap[videoId] ?? historyMap.values.firstWhere(
-          (data) => sanitizeFileName(data['title']!) == baseName,
-          orElse: () => {
-            'title': baseName,
-            'channel': 'Unknown Channel',
-            'thumbnail': 'https://i.ytimg.com/vi/$videoId/hqdefault.jpg',
-            'timestamp': DateTime.now().millisecondsSinceEpoch.toString(),
-          },
-        );
-
-        final title = historyData['title'] ?? baseName;
-        final channel = historyData['channel'] ?? 'Unknown Channel';
-        final thumbnail = thumbnailFile?.path ?? historyData['thumbnail'] ?? 'https://i.ytimg.com/vi/$videoId/hqdefault.jpg';
-        final downloadTime = historyData['timestamp'] != null
-            ? DateTime.fromMillisecondsSinceEpoch(int.parse(historyData['timestamp']!))
-            : primaryFile.statSync().modified;
-
+        // 5. Jika file ditemukan, tambahkan ke daftar
         mediaList.add({
-          'id': videoId,
+          'id': videoId, // ID video masih penting untuk thumbnail
           'title': title,
           'channel': channel,
-          'thumbnail': thumbnail,
+          'thumbnail': thumbnailUrl, // Gunakan URL remote, atau cek thumbnail lokal
           'path': primaryFile.path,
-          'type': primaryFile.path.endsWith('.mp3') ? 'audio' : 'video',
-          'downloadTime': downloadTime,
+          'type': type,
         });
       }
 
-      // Urutkan berdasarkan waktu unduhan (terbaru pertama)
-      mediaList.sort((a, b) => b['downloadTime'].compareTo(a['downloadTime']));
-
+      // 6. Urutkan berdasarkan urutan di riwayat (terbaru dulu)
+      // Karena kita iterasi dari awal riwayat, hasilnya sudah terurut.
+      
       return mediaList;
     } catch (e) {
       debugPrint('Error getting downloaded media: $e');
@@ -223,7 +171,6 @@ class LocalMediaService {
       final thumbnailsDir = await getThumbnailsDirectory();
       if (thumbnailsDir == null) return null;
 
-      // PERBAIKAN: Cari thumbnail di folder thumbnails
       final thumbnailPath = '${thumbnailsDir.path}/$videoId.jpg';
       final thumbnailFile = File(thumbnailPath);
 
@@ -248,7 +195,6 @@ class LocalMediaService {
       final thumbnailsDir = await getThumbnailsDirectory();
       if (thumbnailsDir == null) return;
 
-      // PERBAIKAN: Simpan thumbnail di folder thumbnails dengan nama videoId
       final thumbnailPath = '${thumbnailsDir.path}/$videoId.jpg';
       final thumbnailFile = File(thumbnailPath);
 

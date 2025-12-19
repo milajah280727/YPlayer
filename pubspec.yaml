@@ -42,7 +42,7 @@ dependencies:
   
   # Audio dependencies
   just_audio: ^0.9.40
-  audio_service: ^0.18.9
+  audio_service: ^0.18.18
 
 
   # Other dependencies
