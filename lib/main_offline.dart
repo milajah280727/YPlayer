@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:yplayer/main.dart'; // Impor HalamanUtama dari main.dart
+import 'package:yplayer/app_theme.dart';
+import 'package:yplayer/main.dart';
 import 'package:yplayer/screens/offline/beranda.dart';
 import 'package:yplayer/screens/offline/playlist_page_offline.dart';
 import 'package:yplayer/widgets/mini_player_widget.dart';
@@ -15,16 +16,13 @@ class MyAppOffline extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        primarySwatch: Colors.pink,
-        visualDensity: VisualDensity.adaptivePlatformDensity,
-      ),
+      title: 'YPlayer - Offline',
+      theme: AppTheme.darkTheme,
       home: const HalamanUtamaOffline(),
     );
   }
 }
 
-//halaman utama
 class HalamanUtamaOffline extends StatefulWidget {
   const HalamanUtamaOffline({super.key});
 
@@ -36,8 +34,6 @@ class _HalamanUtamaOfflineState extends State<HalamanUtamaOffline>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
   final List<String> _judulTab = ["Beranda", "Playlist"];
-  
-  // Tambahkan GlobalKey untuk Scaffold
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
   @override
@@ -58,45 +54,12 @@ class _HalamanUtamaOfflineState extends State<HalamanUtamaOffline>
 
   @override
   Widget build(BuildContext context) {
-    // Ambil padding untuk menghindari area sistem
     final padding = MediaQuery.of(context).padding;
     
     return Scaffold(
-      // Tambahkan key ke Scaffold
       key: _scaffoldKey,
-      drawer: Drawer(
-        backgroundColor: Colors.white,
-        child: ListView(
-          children: [
-            DrawerHeader(
-              child: Image.asset(
-                "assets/images/image.png", 
-                width: 10, 
-                height: 10,
-              ),
-            ),
-            ListTile(
-              leading: const Icon(Icons.home),
-              title: const Text("Online Mode"),
-              onTap: (){
-                Navigator.pop(context);
-                Navigator.pushAndRemoveUntil(
-                  context, 
-                  MaterialPageRoute(builder: (context) => const HalamanUtama()), 
-                  (route) => false
-                );
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.home),
-              title: const Text("Offline Mode"),
-              onTap: (){
-                Navigator.pop(context);
-              },
-            )
-          ],
-        ),
-      ),
+      backgroundColor: Theme.of(context).colorScheme.surface,
+      drawer: _buildDrawer(context),
       body: Stack(
         children: [
           Column(
@@ -105,7 +68,7 @@ class _HalamanUtamaOfflineState extends State<HalamanUtamaOffline>
               _buildCustomAppBar(context, padding),
               Expanded(
                 child: Padding(
-                  padding: EdgeInsets.only(bottom: padding.bottom),
+                  padding: EdgeInsets.only(bottom: padding.bottom + 70),
                   child: TabBarView(
                     controller: _tabController,
                     children: const [
@@ -128,10 +91,68 @@ class _HalamanUtamaOfflineState extends State<HalamanUtamaOffline>
     );
   }
 
+  Widget _buildDrawer(BuildContext context) {
+    return Drawer(
+      child: Column(
+        children: [
+          DrawerHeader(
+            padding: EdgeInsetsGeometry.only(top: 50),
+            child: Column(
+              children: [
+                Image.asset("assets/images/offlineimage.png",width: 80,height: 80,),
+                SizedBox(height: 5,),
+                Text("YPlayer")
+              ],
+            )
+          ),
+          ListTile(
+            leading: Icon(Icons.wifi, color: AppTheme.textSecondary),
+            title: const Text('Online Mode'),
+            subtitle: const Text('Stream and download music'),
+            onTap: () {
+              Navigator.pop(context);
+              Navigator.pushAndRemoveUntil(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const HalamanUtama(),
+                ),
+                (route) => false,
+              );
+            },
+          ),
+          ListTile(
+            leading: Icon(Icons.offline_bolt, color: AppTheme.primaryPink),
+            title: const Text('Offline Mode'),
+            subtitle: const Text('Play downloaded music'),
+            onTap: () => Navigator.pop(context),
+          ),
+          const Spacer(),
+          Container(
+            padding: const EdgeInsets.all(16),
+            child: Text(
+              'Version 1.0.0',
+              style: TextStyle(
+                color: AppTheme.textTertiary,
+                fontSize: 12,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildCustomAppBar(BuildContext context, EdgeInsets padding) {
     return Container(
-      decoration: const BoxDecoration(
-        color: Colors.pink,
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surface,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.1),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: Padding(
         padding: EdgeInsets.only(top: padding.top, left: 8.0, right: 8.0),
@@ -142,38 +163,26 @@ class _HalamanUtamaOfflineState extends State<HalamanUtamaOffline>
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 IconButton(
-                  icon: const Icon(Icons.menu, color: Colors.white),
-                  // Gunakan GlobalKey untuk membuka drawer
+                  icon: const Icon(Icons.menu),
                   onPressed: () => _scaffoldKey.currentState?.openDrawer(),
                 ),
                 Text(
                   _judulTab[_tabController.index],
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 18,
-                    fontWeight: FontWeight.w500,
-                  ),
+                  style: Theme.of(context).textTheme.headlineMedium,
                 ),
                 IconButton(
-                  icon: const Icon(Icons.search, color: Colors.white),
+                  icon: const Icon(Icons.search),
                   onPressed: () {
-                    // Tambahkan fungsi pencarian jika diperlukan
-                    // Navigator.push(
-                    //   context,
-                    //   MaterialPageRoute(builder: (context) => const SearchPage()),
-                    // );
+                    // Implementasi pencarian offline jika diperlukan
                   },
                 ),
               ],
             ),
             TabBar(
               controller: _tabController,
-              labelColor: Colors.black,
-              unselectedLabelColor: Colors.white,
-              indicatorColor: Colors.black,
               tabs: const [
-                Tab(icon: Icon(Icons.home)),
-                Tab(icon: Icon(Icons.playlist_add_check)),
+                Tab(icon: Icon(Icons.home_outlined)),
+                Tab(icon: Icon(Icons.playlist_add_check_outlined)),
               ],
             ),
           ],

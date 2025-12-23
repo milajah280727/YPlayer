@@ -18,7 +18,7 @@ class DownloadProgressSnackBar {
     if (_isShowing) return;
 
     _isShowing = true;
-    
+
     // Buat overlay untuk menampilkan snackbar kustom
     _overlayEntry = OverlayEntry(
       builder: (context) => _DownloadProgressSnackBar(
@@ -68,7 +68,8 @@ class _DownloadProgressSnackBar extends StatefulWidget {
   }) : super(key: key);
 
   @override
-  State<_DownloadProgressSnackBar> createState() => _DownloadProgressSnackBarState();
+  State<_DownloadProgressSnackBar> createState() =>
+      _DownloadProgressSnackBarState();
 }
 
 class _DownloadProgressSnackBarState extends State<_DownloadProgressSnackBar>
@@ -82,18 +83,18 @@ class _DownloadProgressSnackBarState extends State<_DownloadProgressSnackBar>
   @override
   void initState() {
     super.initState();
-    
+
     // Inisialisasi animasi
     _controller = AnimationController(
       duration: const Duration(milliseconds: 300),
       vsync: this,
     );
-    
+
     _animation = CurvedAnimation(
       parent: _controller,
       curve: Curves.easeOutBack,
     );
-    
+
     // Mulai animasi dan download
     _controller.forward();
     _startDownload();
@@ -123,7 +124,7 @@ class _DownloadProgressSnackBarState extends State<_DownloadProgressSnackBar>
             _isCompleted = true;
           });
         }
-        
+
         // Tunggu sebentar sebelum menutup
         await Future.delayed(const Duration(seconds: 2));
         if (mounted) {
@@ -162,7 +163,7 @@ class _DownloadProgressSnackBarState extends State<_DownloadProgressSnackBar>
       left: 0,
       right: 0,
       child: Material(
-        color: const Color.fromARGB(0, 86, 83, 83),
+        color: Colors.transparent,
         child: AnimatedBuilder(
           animation: _animation,
           builder: (context, child) {
@@ -176,15 +177,15 @@ class _DownloadProgressSnackBarState extends State<_DownloadProgressSnackBar>
             margin: const EdgeInsets.all(16),
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: _hasError 
-                  ? Colors.red.shade400 
-                  : Theme.of(context).colorScheme.surface,
-              borderRadius: BorderRadius.circular(8),
+              color: _hasError
+                  ? Colors.red.shade700.withOpacity(0.9)
+                  : const Color(0xFF1E1E1E),
+              borderRadius: BorderRadius.circular(12),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.2),
-                  blurRadius: 8,
-                  offset: const Offset(0, 2),
+                  color: Colors.black.withOpacity(0.3),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
                 ),
               ],
             ),
@@ -195,28 +196,30 @@ class _DownloadProgressSnackBarState extends State<_DownloadProgressSnackBar>
                 Row(
                   children: [
                     if (_hasError)
-                      const Icon(Icons.error, color: Color.fromARGB(255, 255, 0, 0))
+                      const Icon(Icons.error, color: Colors.white)
                     else if (_isCompleted)
-                      const Icon(Icons.check_circle, color: Color.fromARGB(255, 5, 255, 97))
+                      const Icon(Icons.check_circle, color: Color(0xFF4CAF50))
                     else
                       SizedBox(
                         width: 20,
                         height: 20,
                         child: CircularProgressIndicator(
                           strokeWidth: 2,
-                          valueColor: const AlwaysStoppedAnimation<Color>(Color.fromARGB(255, 255, 1, 1)),
+                          valueColor: const AlwaysStoppedAnimation<Color>(
+                            Color(0xFFE91E63),
+                          ),
                         ),
                       ),
                     const SizedBox(width: 12),
                     Expanded(
                       child: Text(
-                        _hasError 
-                            ? 'Error downloading' 
-                            : _isCompleted 
-                                ? 'Download completed' 
-                                : widget.title,
+                        _hasError
+                            ? 'Error downloading'
+                            : _isCompleted
+                            ? 'Download completed'
+                            : widget.title,
                         style: const TextStyle(
-                          color: Color.fromARGB(255, 0, 0, 0),
+                          color: Colors.white,
                           fontWeight: FontWeight.w500,
                         ),
                         maxLines: 1,
@@ -227,7 +230,7 @@ class _DownloadProgressSnackBarState extends State<_DownloadProgressSnackBar>
                       Text(
                         '${(_progress * 100).toStringAsFixed(0)}%',
                         style: const TextStyle(
-                          color: Color.fromARGB(255, 0, 0, 0),
+                          color: Color(0xFFE91E63),
                           fontWeight: FontWeight.w500,
                         ),
                       ),
@@ -239,7 +242,7 @@ class _DownloadProgressSnackBarState extends State<_DownloadProgressSnackBar>
                   Container(
                     height: 4,
                     decoration: BoxDecoration(
-                      color: const Color.fromARGB(255, 0, 0, 0).withOpacity(0.3),
+                      color: Colors.white.withOpacity(0.2),
                       borderRadius: BorderRadius.circular(2),
                     ),
                     child: FractionallySizedBox(
@@ -247,7 +250,7 @@ class _DownloadProgressSnackBarState extends State<_DownloadProgressSnackBar>
                       widthFactor: _progress,
                       child: Container(
                         decoration: BoxDecoration(
-                          color: const Color.fromARGB(255, 0, 0, 0),
+                          color: const Color(0xFFE91E63),
                           borderRadius: BorderRadius.circular(2),
                         ),
                       ),

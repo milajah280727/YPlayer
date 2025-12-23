@@ -313,7 +313,7 @@ class PlayerProvider extends ChangeNotifier {
       hidePlayer();
     }
   }
-  // ==================== AKHIR FUNGSI playMusic ====================
+
 
   Future<void> _fetchRelatedSongsAndSetQueue(String currentVideoId) async {
     try {
@@ -324,7 +324,7 @@ class PlayerProvider extends ChangeNotifier {
       if (history.isEmpty) {
         results = await YTDLService.search('trending music in indonesia');
       } else {
-        final lastThreeSearches = history.take(3).toList();
+        final lastThreeSearches = history.take(5).toList();
         final recommendationQuery = lastThreeSearches.map((query) => '"$query"').join(' OR ');
         results = await YTDLService.search(recommendationQuery);
       }

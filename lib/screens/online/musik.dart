@@ -20,28 +20,99 @@ class _MusikPageOnlineState extends State<MusikPageOnline>
     with AutomaticKeepAliveClientMixin {
   List<Map<String, dynamic>> _trendingSongs = [];
   bool _isLoading = true;
+  bool _isLoadingMore = false;
+  bool _hasMore = true;
+  final String _searchQuery = 'Musik Viral Spotify 2025';
+  int _currentPage = 1;
+  final int _itemsPerPage = 20;
+  final ScrollController _scrollController = ScrollController();
+  bool _isFetching = false; // Untuk mencegah fetch ganda
 
  @override
   void initState() {
     super.initState();
     _fetchTrendingSongs();
+    _scrollController.addListener(_scrollListener);
   }
 
-  Future<void> _fetchTrendingSongs() async {
-    setState(() {
-      _isLoading = true;
-    });
+  @override
+  void dispose() {
+    _scrollController.removeListener(_scrollListener);
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _scrollListener() {
+    // Trigger load more saat scroll mendekati akhir (100px dari akhir)
+    if (_scrollController.position.pixels >= 
+        _scrollController.position.maxScrollExtent - 100) {
+      if (!_isLoadingMore && _hasMore && !_isFetching) {
+        _fetchTrendingSongs(loadMore: true);
+      }
+    }
+  }
+
+  Future<void> _fetchTrendingSongs({bool loadMore = false}) async {
+    if (_isFetching) return; // Cegah fetch ganda
+    
+    _isFetching = true;
+    
+    if (loadMore) {
+      setState(() {
+        _isLoadingMore = true;
+      });
+    } else {
+      setState(() {
+        _isLoading = true;
+        _currentPage = 1;
+        _trendingSongs = [];
+        _hasMore = true;
+      });
+    }
 
     try {
-      final results = await YTDLService.search('Musik Viral Spotify 2025');
-      setState(() {
-        _trendingSongs = results.take(20).toList();
-        _isLoading = false;
-      });
+      final results = await YTDLService.search(_searchQuery);
+
+      if (loadMore) {
+        // Tambahkan data baru ke list yang sudah ada
+        final startIndex = _currentPage * _itemsPerPage;
+        final newSongs = results.skip(startIndex).take(_itemsPerPage).toList();
+        
+        if (newSongs.isEmpty) {
+          setState(() {
+            _hasMore = false;
+            _isLoadingMore = false;
+            _isFetching = false;
+          });
+          return;
+        }
+        
+        setState(() {
+          _trendingSongs.addAll(newSongs);
+          _currentPage++;
+          _isLoadingMore = false;
+          _isFetching = false;
+        });
+      } else {
+        // Load data pertama kali
+        setState(() {
+          _trendingSongs = results.take(_itemsPerPage).toList();
+          _currentPage = 1;
+          _isLoading = false;
+          _isFetching = false;
+          
+          // Periksa apakah masih ada data
+          if (results.length <= _itemsPerPage) {
+            _hasMore = false;
+          }
+        });
+      }
     } catch (e) {
       debugPrint('Error fetching trending songs: $e');
       setState(() {
         _isLoading = false;
+        _isLoadingMore = false;
+        _isFetching = false;
       });
     }
   }
@@ -61,10 +132,8 @@ class _MusikPageOnlineState extends State<MusikPageOnline>
       return;
     }
 
-    // ignore: unused_local_variable
     final sanitizedTitle = DownloadService.sanitizeFileName(title);
 
-    // Ganti showDialog dengan ini:
     DownloadProgressSnackBar.show(
       context,
       title: 'Mengunduh Audio: $title',
@@ -132,7 +201,6 @@ class _MusikPageOnlineState extends State<MusikPageOnline>
           formats: resolutions,
           onQualitySelected: (formatId) {
             final sanitizedTitle = DownloadService.sanitizeFileName(title);
-
             DownloadService.downloadAudio;
           },
         ),
@@ -182,92 +250,114 @@ class _MusikPageOnlineState extends State<MusikPageOnline>
   Widget build(BuildContext context) {
     super.build(context);
     return Scaffold(
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : ListView.builder(
-              itemCount: _trendingSongs.length,
-              itemBuilder: (context, index) {
-                final song = _trendingSongs[index];
-                return ListTile(
-                  onTap: () {
-                    final playerProvider = Provider.of<PlayerProvider>(
-                      context,
-                      listen: false,
-                    );
-                    playerProvider.playMusic(
-                      videoId: song['id'],
-                      title: song['title'],
-                      channel: song['channel'],
-                    );
-                  },
-                  leading: ClipRRect(
-                    borderRadius: BorderRadius.circular(4),
-                    child: Image.network(
-                      song['thumbnail'],
-                      width: 90,
-                      height: 70,
-                      fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => Container(
-                        width: 50,
-                        height: 50,
-                        color: Colors.grey[800],
-                        child: const Icon(
-                          Icons.music_video,
-                          color: Colors.white70,
-                        ),
-                      ),
+      body: Column(
+        children: [
+          // Header dengan informasi pencarian
+          // Daftar lagu dengan infinite scroll
+          Expanded(
+            child: _isLoading
+                ? const Center(child: CircularProgressIndicator())
+                : RefreshIndicator(
+                    onRefresh: () => _fetchTrendingSongs(),
+                    child: ListView.builder(
+                      controller: _scrollController,
+                      itemCount: _trendingSongs.length + (_hasMore ? 1 : 0),
+                      itemBuilder: (context, index) {
+                        // Tampilkan indikator loading di akhir daftar
+                        if (index == _trendingSongs.length && _hasMore) {
+                          return const Padding(
+                            padding: EdgeInsets.all(16.0),
+                            child: Center(
+                              child: CircularProgressIndicator(),
+                            ),
+                          );
+                        }
+                        
+                        final song = _trendingSongs[index];
+                        return ListTile(
+                          onTap: () {
+                            final playerProvider = Provider.of<PlayerProvider>(
+                              context,
+                              listen: false,
+                            );
+                            playerProvider.playMusic(
+                              videoId: song['id'],
+                              title: song['title'],
+                              channel: song['channel'],
+                            );
+                          },
+                          leading: ClipRRect(
+                            borderRadius: BorderRadius.circular(4),
+                            child: Image.network(
+                              song['thumbnail'],
+                              width: 90,
+                              height: 70,
+                              fit: BoxFit.cover,
+                              errorBuilder: (_, __, ___) => Container(
+                                width: 50,
+                                height: 50,
+                                color: Colors.grey[800],
+                                child: const Icon(
+                                  Icons.music_video,
+                                  color: Colors.white70,
+                                ),
+                              ),
+                            ),
+                          ),
+                          title: Text(
+                            song['title'],
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          subtitle: Text(
+                            song['channel'],
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          trailing: PopupMenuButton<String>(
+                            icon: const Icon(Icons.more_vert),
+                            onSelected: (value) {
+                              if (value == 'play') {
+                                final playerProvider = Provider.of<PlayerProvider>(context, listen: false);
+                                playerProvider.playMusic(
+                                  videoId: song['id'],
+                                  title: song['title'],
+                                  channel: song['channel'],
+                                );
+                              } else if (value == 'download') {
+                                _showDownloadOptions(song['id'], song['title'], song['channel'], song['thumbnail']);
+                              }
+                            },
+                            itemBuilder: (context) => [
+                              const PopupMenuItem(
+                                value: 'play',
+                                child: Row(
+                                  children: [
+                                    Icon(Icons.play_circle),
+                                    SizedBox(width: 8),
+                                    Text('Putar'),
+                                  ],
+                                ),
+                              ),
+                              const PopupMenuItem(
+                                value: 'download',
+                                child: Row(
+                                  children: [
+                                    Icon(Icons.download),
+                                    SizedBox(width: 8),
+                                    Text('Unduh'),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      },
                     ),
                   ),
-                  title: Text(
-                    song['title'],
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  subtitle: Text(
-                    song['channel'],
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  trailing: PopupMenuButton<String>(
-                    icon: const Icon(Icons.more_vert),
-                    onSelected: (value) {
-                      if (value == 'play') {
-                        final playerProvider = Provider.of<PlayerProvider>(context, listen: false);
-                        playerProvider.playMusic(
-                          videoId: song['id'],
-                          title: song['title'],
-                          channel: song['channel'],
-                        );
-                      } else if (value == 'download') {
-                        _showDownloadOptions(song['id'], song['title'], song['channel'], song['thumbnail']);
-                      }
-                    },
-                    itemBuilder: (context) => [
-                      const PopupMenuItem(
-                        value: 'play',
-                        child: Row(
-                          children: [
-                            Icon(Icons.play_circle),
-                            SizedBox(width: 8),
-                            Text('Putar'),
-                          ],
-                        ),
-                      ),
-                      const PopupMenuItem(
-                        value: 'download',
-                        child: Row(
-                          children: [
-                            Icon(Icons.download),
-                            SizedBox(width: 8),
-                            Text('Unduh'),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                );
-              },
-            ),
+          ),
+        ],
+      ),
     );
   }
 

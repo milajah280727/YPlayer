@@ -102,7 +102,7 @@ class YTDLService {
       // Ganti URL ini dengan URL backend Anda yang sebenarnya
       // Jika backend berjalan di komputer yang sama dan Anda testing di emulator, localhost bisa digunakan.
       // Jika testing di HP fisik, gunakan IP lokal komputer Anda (misal: http://192.168.1.5:8000)
-      final uri = Uri.parse('https://compile-surge-halloween-memorabilia.trycloudflare.com/search?query=$query');
+      final uri = Uri.parse('https://defining-came-buffalo-cups.trycloudflare.com/search?query=$query');
 
       final response = await http.get(uri);
 

@@ -9,7 +9,7 @@ import 'local_media_service.dart';
 class DownloadService {
   static late Dio _dio;
   static const String _baseUrl =
-      'https://compile-surge-halloween-memorabilia.trycloudflare.com';
+      'https://defining-came-buffalo-cups.trycloudflare.com';
 
   // Inisialisasi Dio dengan konfigurasi yang tepat
   static void initialize() {

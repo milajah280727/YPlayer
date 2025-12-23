@@ -51,4 +51,22 @@ class SearchProvider extends ChangeNotifier {
     await prefs.setStringList('search_history', _searchHistory);
     notifyListeners();
   }
+
+  // 新增：删除单个搜索历史项
+  Future<void> removeFromSearchHistory(String query) async {
+    _searchHistory.remove(query);
+    
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setStringList('search_history', _searchHistory);
+    notifyListeners();
+  }
+
+  // 新增：清空所有搜索历史
+  Future<void> clearSearchHistory() async {
+    _searchHistory.clear();
+    
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setStringList('search_history', _searchHistory);
+    notifyListeners();
+  }
 }
