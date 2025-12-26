@@ -99,65 +99,77 @@ class LocalMediaService {
 
   /// Mendapatkan semua media yang diunduh, diurutkan dari yang terbaru.
   /// LOGIKA BARU: Membaca dari riwayat dan memverifikasi keberadaan file.
+    /// Mendapatkan semua media yang diunduh.
+  /// LOGIKA BARU: Scan fisik folder penyimpanan + Lookup Metadata dari Riwayat.
   static Future<List<Map<String, dynamic>>> getDownloadedMedia() async {
     try {
       final directory = await getStorageDirectory();
       if (directory == null) return [];
 
-      // 1. Muat riwayat unduhan dari SharedPreferences
-      final prefs = await SharedPreferences.getInstance();
-      final List<String> downloadHistory =
-          prefs.getStringList(_downloadHistoryKey) ?? [];
-      
-      final List<Map<String, dynamic>> mediaList = [];
+      if (!await directory.exists()) return [];
 
-      // 2. Iterasi melalui riwayat, bukan file sistem secara langsung
+      // 1. Load History untuk Metadata Lookup (Judul, Thumbnail, Channel)
+      final prefs = await SharedPreferences.getInstance();
+      final List<String> downloadHistory = prefs.getStringList(_downloadHistoryKey) ?? [];
+      
+      final Map<String, dynamic> historyMetadata = {};
       for (final item in downloadHistory) {
         final parts = item.split('|||');
-        if (parts.length < 4) continue; // Lewati entri yang tidak valid
-
-        final videoId = parts[0];
-        final title = parts[1];
-        final channel = parts[2];
-        final thumbnailUrl = parts[3];
-
-        // 3. Bangun kembali nama file yang diharapkan menggunakan judul yang disimpan
-        final sanitizedTitle = sanitizeFileName(title);
-        final audioFileName = '$sanitizedTitle.mp3';
-        final videoFileName = '$sanitizedTitle.mp4';
-
-        // 4. Periksa keberadaan file audio dan video
-        final audioFile = File('${directory.path}/$audioFileName');
-        final videoFile = File('${directory.path}/$videoFileName');
-
-        File? primaryFile;
-        String type;
-
-        if (await audioFile.exists()) {
-          primaryFile = audioFile;
-          type = 'audio';
-        } else if (await videoFile.exists()) {
-          primaryFile = videoFile;
-          type = 'video';
-        } else {
-          // PERBAIKAN: Jika tidak ada file yang ditemukan, lanjut ke item berikutnya
-          continue;
+        if (parts.length >= 4) {
+          final title = parts[1];
+          final sanitized = sanitizeFileName(title);
+          // Simpan metadata berdasarkan nama file (karena kita cari file berdasarkan nama)
+          historyMetadata[sanitized] = {
+            'id': parts[0],
+            'channel': parts[2],
+            'thumbnail': parts[3],
+            'originalTitle': parts[1],
+          };
         }
-
-        // 5. Jika file ditemukan, tambahkan ke daftar
-        mediaList.add({
-          'id': videoId, // ID video masih penting untuk thumbnail
-          'title': title,
-          'channel': channel,
-          'thumbnail': thumbnailUrl, // Gunakan URL remote, atau cek thumbnail lokal
-          'path': primaryFile.path,
-          'type': type,
-        });
       }
 
-      // 6. Urutkan berdasarkan urutan di riwayat (terbaru dulu)
-      // Karena kita iterasi dari awal riwayat, hasilnya sudah terurut.
+      final List<Map<String, dynamic>> mediaList = [];
+
+      // 2. SCAN FISIK DIREKTORI (Langkah Kunci)
+      // Mengambil semua entity di folder
+      final Stream<FileSystemEntity> entityList = directory.list();
       
+      await for (final entity in entityList) {
+        if (entity is File) {
+          // Ambil nama file saja (misal: "Lagu A.mp3")
+          final fileName = entity.path.split('/').last;
+
+          if (fileName.endsWith('.mp3') || fileName.endsWith('.mp4')) {
+            // Ambil nama tanpa ekstensi
+            final baseName = fileName.replaceAll('.mp3', '').replaceAll('.mp4', '');
+            final type = fileName.endsWith('.mp3') ? 'audio' : 'video';
+
+            // Cek apakah file ini ada di metadata history kita?
+            final info = historyMetadata[baseName];
+
+            mediaList.add({
+              'id': info != null ? info['id'] : baseName, // Pakai nama file jika tidak ada ID
+              'title': info != null ? info['originalTitle'] ?? baseName : baseName,
+              'channel': info != null ? info['channel'] : 'Local File',
+              'thumbnail': info != null ? info['thumbnail'] : '', // Kosong jika file lama
+              'path': entity.path,
+              'type': type,
+            });
+          }
+        }
+      }
+
+      // 3. Urutkan berdasarkan waktu modifikasi file (Terbaru di atas)
+      mediaList.sort((a, b) {
+        final fileA = File(a['path']);
+        final fileB = File(b['path']);
+        try {
+          return fileB.lastModifiedSync().compareTo(fileA.lastModifiedSync());
+        } catch (e) {
+          return 0;
+        }
+      });
+
       return mediaList;
     } catch (e) {
       debugPrint('Error getting downloaded media: $e');

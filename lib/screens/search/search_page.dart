@@ -211,14 +211,8 @@ class _SearchPageState extends State<SearchPage> {
   Widget _buildCustomAppBar(BuildContext context, EdgeInsets padding) {
     return Container(
       decoration: BoxDecoration(
-        color: const Color(0xFF1E1E1E),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.1),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
-          ),
-        ],
+        color: Color.fromARGB(255, 255, 255, 255).withOpacity(0.3),
+        
       ),
       child: Padding(
         padding: EdgeInsets.only(top: padding.top, left: 8.0, right: 8.0),

@@ -76,7 +76,7 @@ class _HalamanUtamaState extends State<HalamanUtama>
     
     return Scaffold(
       key: _scaffoldKey,
-      backgroundColor: Theme.of(context).colorScheme.background,
+      backgroundColor:Color.fromARGB(255, 255, 255, 255).withOpacity(0.3),
       drawer: _buildDrawer(context),
       body: Stack(
         children: [
@@ -163,10 +163,10 @@ class _HalamanUtamaState extends State<HalamanUtama>
   Widget _buildCustomAppBar(BuildContext context, EdgeInsets padding) {
     return Container(
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface,
+        color: const Color.fromARGB(255, 108, 107, 107).withOpacity(0.1),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.1),
+            color: const Color.fromARGB(255, 79, 78, 78).withOpacity(0.1),
             blurRadius: 10,
             
           ),

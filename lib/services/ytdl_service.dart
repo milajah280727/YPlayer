@@ -59,7 +59,7 @@ class YTDLService {
   }
 
   // --- PERUBAHAN: Mengubah tipe data yang dikembalikan ---
-  static Future<List<Map<String, dynamic>>> getVideoResolutions(
+    static Future<List<Map<String, dynamic>>> getVideoResolutions(
     String videoId,
   ) async {
     try {
@@ -68,15 +68,14 @@ class YTDLService {
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        // API Anda mengembalikan {"formats": ["720", "1080", ...]}
-        final List<String> stringFormats = List<String>.from(
-          data['formats'] ?? [],
-        );
-
-        // PERBAIKAN: Ubah List<String> menjadi List<Map<String, dynamic>>
-        // Contoh: ['720', '1080'] menjadi [{'resolution': '720'}, {'resolution': '1080'}]
-        final List<Map<String, dynamic>> mapFormats = stringFormats
-            .map((resolution) => {'resolution': resolution})
+        
+        // PERBAIKAN: Jangan dipaksa jadi List<String>, tapi ambil sebagai List<dynamic>
+        // lalu cast ke Map<String, dynamic>
+        final List<dynamic> rawFormats = data['formats'] ?? [];
+        
+        // Ubah list dynamic menjadi list Map yang aman
+        final List<Map<String, dynamic>> mapFormats = rawFormats
+            .map((item) => item as Map<String, dynamic>)
             .toList();
 
         return mapFormats;
@@ -92,23 +91,21 @@ class YTDLService {
     }
   }
 
-  // Di dalam class YTDLService
+
 
   // --- FUNGSI BARU: Pencarian melalui Backend ---
   static Future<List<Map<String, dynamic>>> searchFromBackend(
     String query,
   ) async {
     try {
-      // Ganti URL ini dengan URL backend Anda yang sebenarnya
-      // Jika backend berjalan di komputer yang sama dan Anda testing di emulator, localhost bisa digunakan.
-      // Jika testing di HP fisik, gunakan IP lokal komputer Anda (misal: http://192.168.1.5:8000)
-      final uri = Uri.parse('https://defining-came-buffalo-cups.trycloudflare.com/search?query=$query');
+      // Ganti URL ini dengan URL backend
+      final uri = Uri.parse('https://comics-stretch-fitness-travel.trycloudflare.com/search?query=$query');
 
       final response = await http.get(uri);
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        // Backend Anda mengembalikan {"results": [...]}
+        // Backend  mengembalikan {"results": [...]}
         final List<dynamic> results = data['results'];
         return results.cast<Map<String, dynamic>>();
       } else {
@@ -122,4 +119,6 @@ class YTDLService {
       return [];
     }
   }
+
+  
 }

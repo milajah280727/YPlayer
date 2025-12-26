@@ -24,6 +24,8 @@ class PlayerProvider extends ChangeNotifier {
   // State
   bool _isPlayerVisible = false;
   bool _isPlayingVideo = false;
+  bool _isLocalPlayback = false; // State Streaming vs Local
+  
   String? _currentVideoId;
   String? _currentTitle;
   String? _currentChannel;
@@ -55,6 +57,7 @@ class PlayerProvider extends ChangeNotifier {
   ChewieController? get chewieController => _chewieController;
   bool get isPlayerVisible => _isPlayerVisible;
   bool get isPlayingVideo => _isPlayingVideo;
+  bool get isLocalPlayback => _isLocalPlayback;
   String? get currentVideoId => _currentVideoId;
   String? get currentTitle => _currentTitle;
   String? get currentChannel => _currentChannel;
@@ -65,7 +68,7 @@ class PlayerProvider extends ChangeNotifier {
   bool get isShuffled => _isShuffled;
   List<Map<String, dynamic>> get relatedSongs => _relatedSongs;
   bool get isLoadingNewSong => _isLoadingNewSong;
-  
+
   // ==================== GETTER UNTUK FAVORIT DAN LAGU TERAKHIR DIPUTAR ====================
   List<Map<String, dynamic>> get favorites => _favorites;
   List<Map<String, dynamic>> get recentlyPlayed => _recentlyPlayed;
@@ -99,7 +102,7 @@ class PlayerProvider extends ChangeNotifier {
       if (state.processingState == ProcessingState.completed) {
         _handleSongCompletion();
       }
-      
+
       // Jika sedang loading dan audio sudah mulai diputar, hentikan status loading
       if (_isLoadingNewSong && state.playing) {
         debugPrint(">>> Audio telah berputar. Menghentikan status loading.");
@@ -107,6 +110,31 @@ class PlayerProvider extends ChangeNotifier {
         notifyListeners();
       }
     });
+  }
+
+  void _initVideoListener() {
+    // Listener untuk mengupdate posisi slider saat video berjalan
+    _videoController?.addListener(() {
+      if (_isPlayingVideo && _videoController != null) {
+        _position = _videoController!.value.position;
+        // Update durasi dari video jika audio null
+        if (_duration == null || (_duration!.inSeconds < _position.inSeconds)) {
+          _duration = _videoController!.value.duration;
+        }
+        notifyListeners();
+      }
+    });
+  }
+
+  // Fungsi Seek untuk Slider
+  void seek(Duration position) {
+    if (_isPlayingVideo) {
+      _videoController?.seekTo(position);
+    } else {
+      _audioPlayer.seek(position);
+    }
+    _position = position; // Update UI langsung
+    notifyListeners();
   }
 
   void _handleSongCompletion() {
@@ -126,29 +154,14 @@ class PlayerProvider extends ChangeNotifier {
 
   void _playNextInQueue() {
     if (_relatedSongs.isEmpty) return;
-
-    _currentQueueIndex = (_currentQueueIndex + 1) % _relatedSongs.length;
-    final nextSong = _relatedSongs[_currentQueueIndex];
-
-    playMusic(
-      videoId: nextSong['id'],
-      title: nextSong['title'],
-      channel: nextSong['channel'],
-    );
-    _preloadNextSongs();
+    // Panggil playSongFromQueue, karena dia sudah menangani Logic Streaming vs Local
+    playSongFromQueue((_currentQueueIndex + 1) % _relatedSongs.length);
   }
 
   void _playPreviousInQueue() {
     if (_relatedSongs.isEmpty) return;
-
-    _currentQueueIndex = (_currentQueueIndex - 1 + _relatedSongs.length) % _relatedSongs.length;
-    final prevSong = _relatedSongs[_currentQueueIndex];
-
-    playMusic(
-      videoId: prevSong['id'],
-      title: prevSong['title'],
-      channel: prevSong['channel'],
-    );
+    // Panggil playSongFromQueue
+    playSongFromQueue((_currentQueueIndex - 1 + _relatedSongs.length) % _relatedSongs.length);
   }
 
   // ==================== METODE UNTUK MANAJEMEN FAVORIT ====================
@@ -174,8 +187,12 @@ class PlayerProvider extends ChangeNotifier {
   Future<void> _saveFavorites() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      // PERBAIKAN: Gunakan map().toList() yang lebih aman dan sederhana
-      final favoritesJson = _favorites.map((song) => "${song['id']}|||${song['title']}|||${song['channel']}|||${song['thumbnail']}").toList();
+      final favoritesJson = _favorites
+          .map(
+            (song) =>
+                "${song['id']}|||${song['title']}|||${song['channel']}|||${song['thumbnail']}",
+          )
+          .toList();
       await prefs.setStringList('favorites', favoritesJson);
     } catch (e) {
       debugPrint("Error saving favorites: $e");
@@ -226,8 +243,12 @@ class PlayerProvider extends ChangeNotifier {
   Future<void> _saveRecentlyPlayed() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      // PERBAIKAN: Gunakan map().toList() yang lebih aman dan sederhana
-      final recentJson = _recentlyPlayed.map((song) => "${song['id']}|||${song['title']}|||${song['channel']}|||${song['thumbnail']}").toList();
+      final recentJson = _recentlyPlayed
+          .map(
+            (song) =>
+                "${song['id']}|||${song['title']}|||${song['channel']}|||${song['thumbnail']}",
+          )
+          .toList();
       await prefs.setStringList('recently_played', recentJson);
     } catch (e) {
       debugPrint("Error saving recently played: $e");
@@ -245,7 +266,7 @@ class PlayerProvider extends ChangeNotifier {
   }
   // ==================== AKHIR METODE LAGU TERAKHIR DIPUTAR ====================
 
-  // ==================== PERUBAHAN: FUNGSI playMusic DENGAN CACHE ====================
+  // ==================== PERUBAHAN: FUNGSI playMusic (STREAMING) ====================
   Future<void> playMusic({
     required String videoId,
     required String title,
@@ -257,9 +278,11 @@ class PlayerProvider extends ChangeNotifier {
     }
 
     _isLoadingNewSong = true;
+    _isLocalPlayback = false; // Tandai Streaming
+    _relatedSongs = []; // Kosongkan related songs
     notifyListeners();
 
-    debugPrint(">>> PERMINTAAN LAGU BARU: Melakukan reset total pemutar.");
+    debugPrint(">>> PERMINTAAN LAGU BARU (STREAMING): Melakukan reset total pemutar.");
     await _audioPlayer.stop();
     _position = Duration.zero;
     _duration = null;
@@ -276,29 +299,24 @@ class PlayerProvider extends ChangeNotifier {
 
     try {
       debugPrint(">>> Fetching new stream for: $title");
-      
+
       // Cek cache terlebih dahulu
       String audioUrl;
       if (_audioUrlCache.containsKey(videoId)) {
-        debugPrint(">>> Cache hit for audio URL: $videoId");
         audioUrl = _audioUrlCache[videoId]!;
       } else {
-        debugPrint(">>> Cache miss, fetching from API: $videoId");
         audioUrl = await YTDLService.getAudioStream(videoId);
-        _audioUrlCache[videoId] = audioUrl; // Simpan ke cache
+        _audioUrlCache[videoId] = audioUrl;
       }
-      
+
       final videoInfoMap = await YTDLService.getInfoAsMap(videoId);
-      
-      // Gunakan LockCachingAudioSource untuk cache permanen
+
       final cachingAudioSource = LockCachingAudioSource(Uri.parse(audioUrl));
       await _audioPlayer.setAudioSource(cachingAudioSource);
       await _audioPlayer.play();
 
       _duration = videoInfoMap['duration'];
 
-      await _fetchRelatedSongsAndSetQueue(videoId);
-      
       final currentSong = {
         'id': videoId,
         'title': title,
@@ -313,66 +331,147 @@ class PlayerProvider extends ChangeNotifier {
       hidePlayer();
     }
   }
+  // ==================== AKHIR FUNGSI playMusic ====================
 
-
-  Future<void> _fetchRelatedSongsAndSetQueue(String currentVideoId) async {
+  // ==================== METODE UNTUK SCAN FILE LOKAL (RELATED SONGS OFFLINE) ====================
+  Future<void> _fetchLocalRelatedSongs(String currentFilePath) async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final history = prefs.getStringList('search_history') ?? [];
+      debugPrint(">>> Scanning local files for related songs...");
 
-      List<Map<String, dynamic>> results;
-      if (history.isEmpty) {
-        results = await YTDLService.search('trending music in indonesia');
-      } else {
-        final lastThreeSearches = history.take(5).toList();
-        final recommendationQuery = lastThreeSearches.map((query) => '"$query"').join(' OR ');
-        results = await YTDLService.search(recommendationQuery);
+      // Tentukan folder download Anda
+      final dir = Directory('/storage/emulated/0/Download/Yplayer');
+
+      if (!await dir.exists()) {
+        debugPrint("Download directory not found.");
+        _relatedSongs = [];
+        notifyListeners();
+        return;
       }
 
-      _relatedSongs = results.take(10).toList();
+      // PERBAIKAN ERROR STREAM -> LIST
+      final List<FileSystemEntity> entities = await dir.list().toList();
+      
+      final List<Map<String, dynamic>> localFiles = [];
 
-      for (int i = 0; i < _relatedSongs.length; i++) {
-        if (_relatedSongs[i]['id'] == currentVideoId) {
-          _currentQueueIndex = i;
-          break;
+      // Filter hanya mp3 dan mp4
+      for (final entity in entities) {
+        if (entity is File) {
+          final path = entity.path;
+          if (path.endsWith('.mp3') || path.endsWith('.mp4')) {
+            // Jangan masukkan lagu yang sedang diputar
+            if (path != currentFilePath) {
+              final fileName = path.split('/').last;
+              // Bersihkan nama dari ekstensi untuk judul
+              final title = fileName.replaceAll(RegExp(r'\.(mp3|mp4)'), '');
+              
+              localFiles.add({
+                'id': fileName, // Gunakan nama file sebagai ID unik sementara
+                'title': title,
+                'channel': 'Local File',
+                'thumbnail': 'https://i.ytimg.com/vi/DOjeW4CUGeA/hqdefault.jpg', // Thumbnail default
+                'path': path, // Simpan path fisik
+                'duration': Duration.zero, // Durasi belum diketahui tanpa membaca file header
+              });
+            }
+          }
         }
       }
 
+      // Batasi jumlah list agar tidak berat (misal 20 lagu)
+      _relatedSongs = localFiles.take(20).toList();
       notifyListeners();
-      _preloadNextSongs();
     } catch (e) {
-      debugPrint('Error fetching related songs: $e');
+      debugPrint('Error scanning local files: $e');
       _relatedSongs = [];
       notifyListeners();
     }
   }
+  // ==================== AKHIR SCAN FILE LOKAL ====================
 
-  // ==================== PERUBAHAN: FUNGSI PRELOAD DENGAN CACHE ====================
-  void _preloadNextSongs() {
-    if (_relatedSongs.isEmpty) return;
+  // ==================== METODE UNTUK MAIN DARI QUEUE (PLAYLIST) ====================
+  Future<void> playSongFromQueue(int index) async {
+    if (index < 0 || index >= _relatedSongs.length) return;
 
-    final nextIndex1 = (_currentQueueIndex + 1) % _relatedSongs.length;
-    final nextIndex2 = (_currentQueueIndex + 2) % _relatedSongs.length;
+    // Update index antrian
+    _currentQueueIndex = index;
+    final song = _relatedSongs[index];
 
-    final nextVideoId1 = _relatedSongs[nextIndex1]['id'];
-    final nextVideoId2 = _relatedSongs[nextIndex2]['id'];
+    _isLoadingNewSong = true;
+    notifyListeners();
 
-    // Preload hanya jika belum ada di cache
-    if (!_audioUrlCache.containsKey(nextVideoId1)) {
-      YTDLService.getAudioStream(nextVideoId1).then((url) {
-        _audioUrlCache[nextVideoId1] = url;
-        debugPrint(">>> Preloaded and cached audio for: $nextVideoId1");
-      });
+    // Reset pemutar (jangan dispose video jika ganti cepat, tapi cukup stop)
+    await _audioPlayer.stop();
+    _position = Duration.zero;
+    _duration = null;
+    _isPlaying = false;
+
+    // Jika sedang video, pindah ke audio otomatis
+    if (_isPlayingVideo) {
+      _isPlayingVideo = false;
+      _disposeVideoControllers();
     }
 
-    if (!_audioUrlCache.containsKey(nextVideoId2)) {
-      YTDLService.getAudioStream(nextVideoId2).then((url) {
-        _audioUrlCache[nextVideoId2] = url;
-        debugPrint(">>> Preloaded and cached audio for: $nextVideoId2");
-      });
+    _isPlayerVisible = true;
+    _currentVideoId = song['id'];
+    _currentTitle = song['title'];
+    _currentChannel = song['channel'];
+    notifyListeners();
+
+    try {
+      debugPrint(">>> Playing from Queue Index $index: ${song['title']}");
+
+      // --- LOGIKA: CARI STREAMING VS LOCAL ---
+      if (song.containsKey('path')) {
+        // --- LOGIKA PLAY LOKAL ---
+        debugPrint(">>> Playing Local File from Queue");
+        _isLocalPlayback = true;
+        
+        await _audioPlayer.setFilePath(song['path']);
+        await _audioPlayer.play();
+
+        // Refresh related songs
+        await _fetchLocalRelatedSongs(song['path']);
+      } else {
+        // --- LOGIKA PLAY STREAMING ---
+        debugPrint(">>> Playing Streaming from Queue");
+        _isLocalPlayback = false;
+        
+        // Cek Cache Audio
+        String audioUrl;
+        if (_audioUrlCache.containsKey(song['id'])) {
+          audioUrl = _audioUrlCache[song['id']]!;
+        } else {
+          audioUrl = await YTDLService.getAudioStream(song['id']);
+          _audioUrlCache[song['id']] = audioUrl;
+        }
+
+        final cachingAudioSource = LockCachingAudioSource(Uri.parse(audioUrl));
+        await _audioPlayer.setAudioSource(cachingAudioSource);
+        await _audioPlayer.play();
+
+        // Tidak perlu fetch related songs saat streaming, list tetap
+      }
+      // ------------------------------------------
+
+      _isLoadingNewSong = false;
+      notifyListeners();
+
+      // Simpan ke Recently Played
+      final currentSong = {
+        'id': song['id'],
+        'title': song['title'],
+        'channel': song['channel'],
+        'thumbnail': song['thumbnail'],
+      };
+      addToRecentlyPlayed(currentSong);
+    } catch (e) {
+      debugPrint('Error playing song from queue: $e');
+      _isLoadingNewSong = false;
+      notifyListeners();
+      hidePlayer();
     }
   }
-  // ==================== AKHIR FUNGSI PRELOAD ====================
+  // ==================== AKHIR METODE PLAYLIST ====================
 
   void skipToNext() => _playNextInQueue();
   void skipToPrevious() => _playPreviousInQueue();
@@ -397,15 +496,18 @@ class PlayerProvider extends ChangeNotifier {
     if (_isShuffled) {
       _originalQueue = List.from(_relatedSongs);
       _relatedSongs.shuffle();
-      _currentQueueIndex = _relatedSongs.indexWhere((song) => song['id'] == _currentVideoId);
+      _currentQueueIndex = _relatedSongs.indexWhere(
+        (song) => song['id'] == _currentVideoId,
+      );
       if (_currentQueueIndex == -1) _currentQueueIndex = 0;
     } else {
       _relatedSongs = List.from(_originalQueue);
-      _currentQueueIndex = _originalQueue.indexWhere((song) => song['id'] == _currentVideoId);
+      _currentQueueIndex = _originalQueue.indexWhere(
+        (song) => song['id'] == _currentVideoId,
+      );
       if (_currentQueueIndex == -1) _currentQueueIndex = 0;
     }
     notifyListeners();
-    _preloadNextSongs();
   }
 
   Future<void> switchToVideo() async {
@@ -414,11 +516,14 @@ class PlayerProvider extends ChangeNotifier {
     await _audioPlayer.pause();
 
     try {
-      // Gunakan youtube_explode_dart langsung untuk mendapatkan stream video
-      final videoUrl = await YTDLService.getVideoStream(_currentVideoId!, '1080');
-      
+      final videoUrl = await YTDLService.getVideoStream(
+        _currentVideoId!,
+        '1080',
+      );
+
       _videoController = VideoPlayerController.networkUrl(Uri.parse(videoUrl));
       await _videoController!.initialize();
+      
       _chewieController = ChewieController(
         videoPlayerController: _videoController!,
         autoPlay: true,
@@ -428,9 +533,13 @@ class PlayerProvider extends ChangeNotifier {
         ),
         allowMuting: false,
         allowFullScreen: false,
-        showControls: true,
+        showControls: false,
       );
+
+      _initVideoListener();
+
       _isPlayingVideo = true;
+      _isPlaying = true; // Pastikan status play ON
       notifyListeners();
     } catch (e) {
       debugPrint('Error switching to video: $e');
@@ -450,8 +559,24 @@ class PlayerProvider extends ChangeNotifier {
   }
 
   void togglePlayPause() {
+    // Simplifikasi boolean untuk menghilangkan prefer_conditional_assignment warning
+    _isPlaying = !_isPlaying;
+
     if (_isPlayingVideo) {
-      _videoController!.value.isPlaying ? _videoController?.pause() : _videoController?.play();
+      if (_videoController != null) {
+        // Kita reverse logika play/pause manual karena state di flip
+        // Jika sekarang true (play), harus pause. Jika sekarang false (pause), harus play.
+        // Tapi di atas kita set _isPlaying = !_isPlaying.
+        // Jadi jika sekarang _isPlaying adalah TRUE (karena di-flip dari false), kita harus PAUSE.
+        // Logika asli: if (_videoController!.value.isPlaying) -> pause else -> play
+        
+        // Mari lakukan check manual state controller yang sebenarnya
+        if (_videoController!.value.isPlaying) {
+          _videoController?.pause();
+        } else {
+          _videoController?.play();
+        }
+      }
     } else {
       if (_isPlaying) {
         _audioPlayer.pause();
@@ -492,16 +617,16 @@ class PlayerProvider extends ChangeNotifier {
     required String channel,
     required String videoId,
   }) async {
-    // Sembunyikan video jika sedang diputar
     if (_isPlayingVideo) {
       await switchToAudio();
     }
 
     _isLoadingNewSong = true;
+    _isLocalPlayback = true;
     notifyListeners();
 
     debugPrint(">>> MEMUTAR AUDIO LOKAL: $title");
-    
+
     await _audioPlayer.stop();
     _position = Duration.zero;
     _duration = null;
@@ -516,9 +641,12 @@ class PlayerProvider extends ChangeNotifier {
     try {
       await _audioPlayer.setFilePath(path);
       await _audioPlayer.play();
-      
-      // Durasi akan otomatis di-set oleh just_audio
+
       _isLoadingNewSong = false;
+      
+      // PANGGIL SCAN FILE UNTUK MENGISI RELATED SONGS
+      await _fetchLocalRelatedSongs(path);
+      
       notifyListeners();
     } catch (e) {
       debugPrint('Error loading local audio: $e');
@@ -536,10 +664,11 @@ class PlayerProvider extends ChangeNotifier {
     required String videoId,
   }) async {
     _isLoadingNewSong = true;
+    _isLocalPlayback = true;
     notifyListeners();
 
     debugPrint(">>> MEMUTAR VIDEO LOKAL: $title");
-    
+
     await _audioPlayer.stop();
     _position = Duration.zero;
     _duration = null;
@@ -557,7 +686,9 @@ class PlayerProvider extends ChangeNotifier {
     try {
       _videoController = VideoPlayerController.file(File(path));
       await _videoController!.initialize();
-      
+
+      _duration = _videoController!.value.duration;
+
       _chewieController = ChewieController(
         videoPlayerController: _videoController!,
         autoPlay: true,
@@ -566,12 +697,23 @@ class PlayerProvider extends ChangeNotifier {
           handleColor: Colors.pinkAccent,
         ),
         allowMuting: false,
-        allowFullScreen: true, // Izinkan fullscreen untuk video lokal
-        showControls: true,
+        allowFullScreen: true,
+        showControls: false,
       );
-      
+
+      _videoController!.addListener(() {
+        if (_isPlayingVideo) {
+          if (_duration == null) _duration = _videoController!.value.duration;
+          _position = _videoController!.value.position;
+          notifyListeners();
+        }
+      });
+
       _isPlayingVideo = true;
       _isLoadingNewSong = false;
+      
+      await _fetchLocalRelatedSongs(path);
+
       notifyListeners();
     } catch (e) {
       debugPrint('Error loading local video: $e');

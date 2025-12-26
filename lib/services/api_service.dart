@@ -5,7 +5,7 @@
 
 class ApiService {
   // Ganti dengan URL backend streaming Anda
-  static const String _baseUrl = 'https://defining-came-buffalo-cups.trycloudflare.com';
+  static const String _baseUrl = 'https://comics-stretch-fitness-travel.trycloudflare.com';
 
   // --- Endpoint untuk Mendapatkan Daftar Format/Resolusi ---
   // Digunakan oleh YTDLService untuk mendapatkan pilihan kualitas video

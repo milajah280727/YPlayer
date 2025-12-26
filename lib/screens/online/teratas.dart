@@ -100,12 +100,46 @@ class _TeratasPageOnlineState extends State<TeratasPageOnline>
 
       showDialog(
         context: context,
-        builder: (context) => VideoQualityDialog(
+        // --- PERBAIKAN 1: Ubah nama parameter context menjadi dialogContext ---
+        builder: (dialogContext) => VideoQualityDialog(
           formats: resolutions,
           onQualitySelected: (formatId) {
-            DownloadService.sanitizeFileName(title);
+            // Tutup dialog kualitas menggunakan context dialog (dialogContext)
+            
 
-            DownloadService.downloadAudio;
+            // --- PERBAIKAN 2: Gunakan context halaman (this.context) untuk SnackBar ---
+            DownloadProgressSnackBar.show(
+              context, // Ini menggunakan context dari HalamanUtama, bukan dialog
+              title: 'Mengunduh Video: $title',
+              downloadFunction: (onProgress) => DownloadService.downloadVideo(
+                videoId,
+                title,
+                channel,
+                thumbnailUrl,
+                formatId,
+                onProgress,
+              ),
+              onComplete: (filePath) {
+                if (filePath != null && mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Video berhasil diunduh: ${title}.mp4'),
+                      backgroundColor: Colors.green,
+                    ),
+                  );
+                }
+              },
+              onError: (error) {
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Gagal mengunduh video: $error'),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                }
+              },
+            );
           },
         ),
       );
@@ -114,14 +148,13 @@ class _TeratasPageOnlineState extends State<TeratasPageOnline>
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Gagal mengunduh video'),
+            content: Text('Gagal memuat format video'),
             backgroundColor: Colors.red,
           ),
         );
       }
     }
   }
-
   void _showDownloadOptions(String videoId, String title, String channel, String thumbnailUrl) {
     showModalBottomSheet(
       context: context,

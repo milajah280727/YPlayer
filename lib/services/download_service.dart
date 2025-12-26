@@ -9,7 +9,7 @@ import 'local_media_service.dart';
 class DownloadService {
   static late Dio _dio;
   static const String _baseUrl =
-      'https://defining-came-buffalo-cups.trycloudflare.com';
+      'https://comics-stretch-fitness-travel.trycloudflare.com';
 
   // Inisialisasi Dio dengan konfigurasi yang tepat
   static void initialize() {

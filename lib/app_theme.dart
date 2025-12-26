@@ -40,7 +40,7 @@ class AppTheme {
       
       // AppBar Theme
       appBarTheme: const AppBarTheme(
-        backgroundColor: darkSurface,
+        backgroundColor: Color.fromARGB(255, 62, 61, 61),
         foregroundColor: textPrimary,
         elevation: 0,
         centerTitle: true,
