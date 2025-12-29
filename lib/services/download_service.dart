@@ -7,38 +7,46 @@ import 'package:device_info_plus/device_info_plus.dart';
 import 'local_media_service.dart';
 
 class DownloadService {
-  static late Dio _dio;
   static const String _baseUrl =
-      'https://comics-stretch-fitness-travel.trycloudflare.com';
+      'https://rate-independently-rings-urge.trycloudflare.com';
 
-  // Inisialisasi Dio dengan konfigurasi yang tepat
-  static void initialize() {
-    _dio = Dio(BaseOptions(
+  // ================= PERBAIKAN KRUSIAL =================
+  // 1. Hapus 'late' agar error LateInitializationError tidak muncul.
+  // 2. Inisialisasi langsung menggunakan method pembantu _createDio()
+  //    agar interceptor dan konfigurasi terpasang sejak awal.
+  static final Dio _dio = _createDio();
+
+  // Fungsi pembantu untuk konfigurasi Dio (diakses saat class dimuat)
+  static Dio _createDio() {
+    final dio = Dio(BaseOptions(
       baseUrl: _baseUrl,
       connectTimeout: const Duration(seconds: 30),
       receiveTimeout: const Duration(minutes: 30),
-      // Tambahkan ini untuk mencegah encoding berlebihan
       followRedirects: true,
-      validateStatus: (status) => status! < 500, // Menerima status < 500
+      // PERBAIKAN: Cek null status sebelum dibandingkan
+      validateStatus: (status) => status != null && status < 500,
     ));
-    
-    // Tambahkan interceptor untuk logging
-    _dio.interceptors.add(LogInterceptor(
+
+    // Pasang interceptor disini agar aman
+    dio.interceptors.add(LogInterceptor(
       requestBody: true,
       responseBody: true,
       logPrint: (obj) => debugPrint(obj.toString()),
     ));
+    
+    return dio;
   }
-  
-  // Panggil initialize() saat aplikasi dimulai
+
+  // Kita biarkan init() kosong atau gunakan untuk pengecekan tambahan,
+  // karena _dio sudah otomatis tersedia saat class dipanggil.
   static void init() {
-    initialize();
+    // Dio sudah siap di sini
   }
 
   // Fungsi untuk testing koneksi ke backend
   static Future<bool> testBackendConnection() async {
     try {
-      final response = await _dio.get('$_baseUrl/');
+      final response = await _dio.get('/');
       return response.statusCode == 200;
     } catch (e) {
       debugPrint('Backend connection test failed: $e');
@@ -47,37 +55,30 @@ class DownloadService {
   }
 
   // Fungsi untuk memeriksa dan meminta izin penyimpanan
-    // Fungsi untuk memeriksa dan meminta izin penyimpanan
   static Future<bool> requestStoragePermission() async {
     try {
       if (Platform.isAndroid) {
         final androidInfo = await DeviceInfoPlugin().androidInfo;
         final sdkInt = androidInfo.version.sdkInt;
 
-        // Android 13 (API 33) dan ke atas: Gunakan izin media granular
         if (sdkInt >= 33) {
           final audioPermission = await Permission.audio.request();
           final videoPermission = await Permission.videos.request();
-
-          // Berikan akses jika salah satu izin relevan diberikan
           return audioPermission.isGranted || videoPermission.isGranted;
-        }
-        // Android 12 (API 32) dan ke bawah: Gunakan izin penyimpanan lama
-        else {
+        } else {
           final storagePermission = await Permission.storage.request();
           return storagePermission.isGranted;
         }
       } else if (Platform.isIOS) {
-        // iOS tidak memerlukan izin eksplisit untuk mengakses dokumen di sandbox-nya sendiri
         return true;
       }
-
       return false;
     } catch (e) {
       debugPrint('Error requesting storage permission: $e');
       return false;
     }
   }
+
   // Fungsi untuk mendapatkan direktori penyimpanan yang sesuai
   static Future<Directory?> getStorageDirectory() async {
     try {
@@ -87,13 +88,16 @@ class DownloadService {
         final androidInfo = await DeviceInfoPlugin().androidInfo;
         final sdkInt = androidInfo.version.sdkInt;
 
+        // Android 11 (SDK 30) ke atas, perlu hati-hati akses direktori eksternal
         if (sdkInt >= 30) {
           try {
+            // Coba akses direktori Download langsung
             directory = Directory('/storage/emulated/0/Download/Yplayer');
             if (!await directory.exists()) {
               await directory.create(recursive: true);
             }
           } catch (e) {
+            // Fallback ke direktori aplikasi jika gagal akses langsung
             directory = await getApplicationDocumentsDirectory();
             directory = Directory('${directory.path}/Yplayer');
             if (!await directory.exists()) {
@@ -101,6 +105,7 @@ class DownloadService {
             }
           }
         } else {
+          // Android 10 ke bawah
           directory = Directory('/storage/emulated/0/Download/Yplayer');
           if (!await directory.exists()) {
             await directory.create(recursive: true);
@@ -135,7 +140,7 @@ class DownloadService {
   static Future<Map<String, dynamic>?> getVideoInfo(String videoId) async {
     try {
       final response = await _dio.get(
-        '$_baseUrl/info',
+        '/info',
         queryParameters: {'url': 'https://www.youtube.com/watch?v=$videoId'},
       );
 
@@ -155,7 +160,7 @@ class DownloadService {
   ) async {
     try {
       final response = await _dio.get(
-        '$_baseUrl/get-formats',
+        '/get-formats',
         queryParameters: {'url': 'https://www.youtube.com/watch?v=$videoId'},
       );
 
@@ -191,7 +196,7 @@ class DownloadService {
         return null;
       }
 
-      // PERUBAHAN: Gunakan judul yang sudah dibersihkan sebagai nama file
+      // Gunakan judul yang sudah dibersihkan
       final sanitizedTitle = sanitizeFileName(title);
       final fileName = '$sanitizedTitle.mp3';
       final filePath = '${directory.path}/$fileName';
@@ -201,7 +206,7 @@ class DownloadService {
       debugPrint('Query parameters: url=https://www.youtube.com/watch?v=$videoId, quality=best');
 
       await _dio.download(
-        '$_baseUrl/download-audio',
+        '/download-audio',
         filePath,
         queryParameters: {
           'url': 'https://www.youtube.com/watch?v=$videoId',
@@ -219,7 +224,7 @@ class DownloadService {
         ),
       );
 
-      // PERBAIKAN: Verifikasi file telah diunduh dengan benar
+      // Verifikasi file
       final file = File(filePath);
       if (!await file.exists()) {
         debugPrint('Downloaded file does not exist: $filePath');
@@ -229,15 +234,13 @@ class DownloadService {
       final fileSize = await file.length();
       debugPrint('Downloaded file size: ${fileSize / (1024 * 1024)} MB');
 
-      if (fileSize < 1024) { // Jika file kurang dari 1KB, kemungkinan error
+      if (fileSize < 1024) {
         debugPrint('Downloaded file is too small, likely an error');
         return null;
       }
 
-      // Simpan thumbnail secara lokal dengan videoId
+      // Simpan thumbnail & riwayat
       await LocalMediaService.saveThumbnail(videoId, thumbnailUrl);
-
-      // Jika berhasil, simpan ke riwayat unduhan
       await LocalMediaService.saveToDownloadHistory(
         videoId: videoId,
         title: title,
@@ -257,7 +260,7 @@ class DownloadService {
     }
   }
 
-  // Fungsi untuk download video dengan kualitas tertentu
+  // Fungsi untuk download video
   static Future<String?> downloadVideo(
     String videoId,
     String title,
@@ -279,7 +282,6 @@ class DownloadService {
         return null;
       }
 
-      // PERUBAHAN: Gunakan judul yang sudah dibersihkan sebagai nama file
       final sanitizedTitle = sanitizeFileName(title);
       final fileName = '$sanitizedTitle.mp4';
       final filePath = '${directory.path}/$fileName';
@@ -289,7 +291,7 @@ class DownloadService {
       debugPrint('Query parameters: url=https://www.youtube.com/watch?v=$videoId, format_id=$formatId');
 
       await _dio.download(
-        '$_baseUrl/download',
+        '/download',
         filePath,
         queryParameters: {
           'url': 'https://www.youtube.com/watch?v=$videoId',
@@ -307,7 +309,7 @@ class DownloadService {
         ),
       );
 
-      // PERBAIKAN: Verifikasi file telah diunduh dengan benar
+      // Verifikasi file
       final file = File(filePath);
       if (!await file.exists()) {
         debugPrint('Downloaded file does not exist: $filePath');
@@ -317,15 +319,13 @@ class DownloadService {
       final fileSize = await file.length();
       debugPrint('Downloaded file size: ${fileSize / (1024 * 1024)} MB');
 
-      if (fileSize < 1024) { // Jika file kurang dari 1KB, kemungkinan error
+      if (fileSize < 1024) {
         debugPrint('Downloaded file is too small, likely an error');
         return null;
       }
 
-      // Simpan thumbnail secara lokal dengan videoId
+      // Simpan thumbnail & riwayat
       await LocalMediaService.saveThumbnail(videoId, thumbnailUrl);
-
-      // Jika berhasil, simpan ke riwayat unduhan
       await LocalMediaService.saveToDownloadHistory(
         videoId: videoId,
         title: title,
@@ -345,7 +345,7 @@ class DownloadService {
     }
   }
 
-  // Fungsi untuk membersihkan nama file dari karakter yang tidak valid
+  // Fungsi untuk membersihkan nama file
   static String sanitizeFileName(String name) {
     return name.replaceAll(RegExp(r'[<>:"/\\|?*]'), '_');
   }

@@ -217,12 +217,7 @@ class MiniPlayerWidget extends StatelessWidget {
             ],
           ),
         ),
-        Positioned(
-          left: 0,
-          right: 0,
-          bottom: 0,
-          child: _buildRelatedSongsBar(player),
-        ),
+        
       ],
     );
   }
@@ -280,7 +275,7 @@ class MiniPlayerWidget extends StatelessWidget {
     );
   }
 
-    Widget _buildMoreOptionsMenu(BuildContext context, PlayerProvider player) {
+  Widget _buildMoreOptionsMenu(BuildContext context, PlayerProvider player) {
     final currentSongId = player.currentVideoId ?? '';
     final isCurrentFavorite = player.isFavorite(currentSongId);
 
@@ -471,174 +466,5 @@ class MiniPlayerWidget extends StatelessWidget {
     return "${twoDigits(duration.inHours)}:$twoDigitMinutes:$twoDigitSeconds";
   }
 
-  Widget _buildRelatedSongsBar(PlayerProvider player) {
-    // JIKA MODE STREAMING, Sembunyikan bar sepenuhnya
-    if (!player.isLocalPlayback) {
-      return const SizedBox.shrink();
-    }
-
-    // JIKA MODE LOCAL, tampilkan bar seperti biasa
-    return Miniplayer(
-      controller: player.relatedController,
-      minHeight: 60,
-      maxHeight: 500,
-      builder: (height, percentage) {
-        return Container(
-          decoration: BoxDecoration(
-            color: const Color.fromARGB(255, 43, 41, 41),
-          ),
-          child: percentage > 0.5
-              ? _buildRelatedSongsList(player)
-              : _buildRelatedSongsHeader(),
-        );
-      },
-    );
-  }
-
-  Widget _buildRelatedSongsHeader() {
-    return const ListTile(
-      leading: Icon(Icons.queue_music, color: Colors.white),
-      title: Text(
-        'Lagu Terkait',
-        style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold), // Fixed typo
-      ),
-      trailing: Icon(Icons.keyboard_arrow_up, color: Colors.white),
-    );
-  }
-
-
-  Widget _buildRelatedSongsList(PlayerProvider player) {
-    if (player.relatedSongs.isEmpty) {
-      return const Center(
-        child: Text(
-          'Tidak ada lagu terkait',
-          style: TextStyle(color: Colors.grey),
-        ),
-      );
-    }
-    return Column(
-      children: [
-        ListTile(
-          leading: const Icon(Icons.queue_music, color: Colors.white),
-          title: const Text(
-            'Lagu Terkait',
-            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-          ),
-          trailing: IconButton(
-            icon: const Icon(Icons.keyboard_arrow_down, color: Colors.white),
-            onPressed: () =>
-                player.relatedController.animateToHeight(state: PanelState.MIN),
-          ),
-        ),
-        const Divider(height: 1, color: Colors.grey),
-        Expanded(
-          child: ListView.builder(
-            itemCount: player.relatedSongs.length,
-            itemBuilder: (context, index) {
-              final song = player.relatedSongs[index];
-              final songId = song['id'];
-              
-              // --- LOGIKA: CEK APAKAH LAGU INI SEDANG DIPUTAR ---
-              final bool isActive = (songId == player.currentVideoId);
-
-              // --- LOGIKA: CEK STATUS DOWNLOAD ---
-              // Kita cek sinkronus file di direktori. Hati-hati, ini bisa berat jika list panjang,
-              // tapi untuk 10-20 item masih aman.
-              bool isDownloaded = false;
-              try {
-                // Sesuaikan dengan path penyimpanan Anda
-                final dir = Directory('/storage/emulated/0/Download/Yplayer');
-                if (dir.existsSync()) {
-                  // Sanitasi nama file sesuai logika DownloadService
-                  final sanTitle = song['title'].toString().replaceAll(RegExp(r'[<>:"/\\|?*]'), '_');
-                  final mp3Path = '${dir.path}/$sanTitle.mp3';
-                  final mp4Path = '${dir.path}/$sanTitle.mp4';
-                  isDownloaded = File(mp3Path).existsSync() || File(mp4Path).existsSync();
-                }
-              } catch (e) {
-                // Abaikan error file sistem
-              }
-              // ------------------------------------------
-
-              return ListTile(
-                contentPadding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 4.0),
-                leading: Stack(
-                  children: [
-                    // Thumbnail / Icon
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(4),
-                      child: Image.network(
-                        song['thumbnail'],
-                        width: 50,
-                        height: 50,
-                        fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) => Container(
-                          width: 50,
-                          height: 50,
-                          color: Colors.grey[800],
-                          child: const Icon(
-                            Icons.music_video,
-                            color: Colors.white70,
-                          ),
-                        ),
-                      ),
-                    ),
-                    // --- TANDA AKTIF (LINGKARAN PINK/PLAY ICON) ---
-                    if (isActive)
-                      Positioned(
-                        top: 0,
-                        left: 0,
-                        child: Container(
-                          decoration: BoxDecoration(
-                            color: Colors.pink,
-                            borderRadius: BorderRadius.only(topLeft: Radius.circular(4), bottomRight: Radius.circular(8))
-                          ),
-                          padding: const EdgeInsets.all(2.0),
-                          child: const Icon(Icons.play_arrow, color: Colors.white, size: 14),
-                        ),
-                      ),
-                  ],
-                ),
-                title: Text(
-                  song['title'],
-                  style: TextStyle(
-                    color: isActive ? Colors.pink : Colors.white, // Judul berubah jadi pink jika aktif
-                    fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                subtitle: Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        song['channel'],
-                        style: TextStyle(color: Colors.grey),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                    // --- TANDA DOWNLOAD (ICON CLOUD) ---
-                    if (isDownloaded)
-                      const Icon(
-                        Icons.cloud_done, 
-                        color: Colors.green, 
-                        size: 16,
-                      ),
-                  ],
-                ),
-                onTap: () {
-                  // Panggil fungsi playSongFromQueue baru
-                  player.playSongFromQueue(index);
-                  player.relatedController.animateToHeight(
-                    state: PanelState.MIN,
-                  );
-                },
-              );
-            },
-          ),
-        ),
-      ],
-    );
-  }
+  
 }

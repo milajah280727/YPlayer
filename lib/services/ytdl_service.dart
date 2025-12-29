@@ -90,35 +90,4 @@ class YTDLService {
       return [];
     }
   }
-
-
-
-  // --- FUNGSI BARU: Pencarian melalui Backend ---
-  static Future<List<Map<String, dynamic>>> searchFromBackend(
-    String query,
-  ) async {
-    try {
-      // Ganti URL ini dengan URL backend
-      final uri = Uri.parse('https://comics-stretch-fitness-travel.trycloudflare.com/search?query=$query');
-
-      final response = await http.get(uri);
-
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        // Backend  mengembalikan {"results": [...]}
-        final List<dynamic> results = data['results'];
-        return results.cast<Map<String, dynamic>>();
-      } else {
-        debugPrint(
-          'Gagal memuat dari backend: ${response.statusCode} - ${response.body}',
-        );
-        return [];
-      }
-    } catch (e) {
-      debugPrint('Error mengambil data dari backend: $e');
-      return [];
-    }
-  }
-
-  
 }

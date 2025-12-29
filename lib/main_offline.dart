@@ -1,3 +1,5 @@
+// ignore_for_file: unused_import
+
 import 'package:flutter/material.dart';
 import 'package:yplayer/app_theme.dart';
 import 'package:yplayer/main.dart';
@@ -33,7 +35,7 @@ class HalamanUtamaOffline extends StatefulWidget {
 class _HalamanUtamaOfflineState extends State<HalamanUtamaOffline>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
-  final List<String> _judulTab = ["Beranda", "Playlist"];
+  final List<String> _judulTab = ["Hasil Unduhan",];
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
   @override
@@ -73,7 +75,7 @@ class _HalamanUtamaOfflineState extends State<HalamanUtamaOffline>
                     controller: _tabController,
                     children: const [
                       BerandaPageOffline(),
-                      PlaylistPageOffline(),
+                      
                     ],
                   ),
                 ),
@@ -145,7 +147,7 @@ class _HalamanUtamaOfflineState extends State<HalamanUtamaOffline>
   Widget _buildCustomAppBar(BuildContext context, EdgeInsets padding) {
     return Container(
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface,
+        color: const Color.fromARGB(255, 108, 107, 107).withValues(alpha: 0.1),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.1),
@@ -176,13 +178,6 @@ class _HalamanUtamaOfflineState extends State<HalamanUtamaOffline>
                     // Implementasi pencarian offline jika diperlukan
                   },
                 ),
-              ],
-            ),
-            TabBar(
-              controller: _tabController,
-              tabs: const [
-                Tab(icon: Icon(Icons.home_outlined)),
-                Tab(icon: Icon(Icons.playlist_add_check_outlined)),
               ],
             ),
           ],

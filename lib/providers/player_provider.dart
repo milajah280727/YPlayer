@@ -4,6 +4,7 @@ import 'package:video_player/video_player.dart';
 import 'package:chewie/chewie.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:yplayer/services/audio_player_service.dart';
 import 'dart:io';
 import '../services/ytdl_service.dart';
 
@@ -13,6 +14,10 @@ enum RepeatMode { off, one, all }
 class PlayerProvider extends ChangeNotifier {
   // Audio Player (Utama)
   final AudioPlayer _audioPlayer = AudioPlayer();
+
+  //audio handler
+  // PERBAIKAN 1: Ubah nama variabel menjadi 'audioHandler' agar cocok dengan constructor
+  final AudioPlayerHandler audioHandler;
 
   // Video Player (Sekunder)
   VideoPlayerController? _videoController;
@@ -74,7 +79,7 @@ class PlayerProvider extends ChangeNotifier {
   List<Map<String, dynamic>> get recentlyPlayed => _recentlyPlayed;
   // ==================== AKHIR GETTER ====================
 
-  PlayerProvider({required audioHandler}) {
+  PlayerProvider({required this.audioHandler}) {
     _initAudioPlayer();
     _loadFavorites();
     _loadRecentlyPlayed();
@@ -113,14 +118,23 @@ class PlayerProvider extends ChangeNotifier {
   }
 
   void _initVideoListener() {
-    // Listener untuk mengupdate posisi slider saat video berjalan
     _videoController?.addListener(() {
       if (_isPlayingVideo && _videoController != null) {
+        final isControllerPlaying = _videoController!.value.isPlaying;
+        
+        // Update posisi
         _position = _videoController!.value.position;
-        // Update durasi dari video jika audio null
+        
+        // Update durasi
         if (_duration == null || (_duration!.inSeconds < _position.inSeconds)) {
           _duration = _videoController!.value.duration;
         }
+
+        // TAMBAHKAN INI: Update status play/pause agar UI ikut berubah
+        if (isControllerPlaying != _isPlaying) {
+          _isPlaying = isControllerPlaying;
+        }
+        
         notifyListeners();
       }
     });
@@ -559,32 +573,30 @@ class PlayerProvider extends ChangeNotifier {
   }
 
   void togglePlayPause() {
-    // Simplifikasi boolean untuk menghilangkan prefer_conditional_assignment warning
-    _isPlaying = !_isPlaying;
-
     if (_isPlayingVideo) {
       if (_videoController != null) {
-        // Kita reverse logika play/pause manual karena state di flip
-        // Jika sekarang true (play), harus pause. Jika sekarang false (pause), harus play.
-        // Tapi di atas kita set _isPlaying = !_isPlaying.
-        // Jadi jika sekarang _isPlaying adalah TRUE (karena di-flip dari false), kita harus PAUSE.
-        // Logika asli: if (_videoController!.value.isPlaying) -> pause else -> play
-        
-        // Mari lakukan check manual state controller yang sebenarnya
         if (_videoController!.value.isPlaying) {
+          // Sedang berputar -> Pause
           _videoController?.pause();
+          _isPlaying = false; // Update manual agar UI langsung berubah
         } else {
+          // Sedang pause -> Play
           _videoController?.play();
+          _isPlaying = true; // Update manual agar UI langsung berubah
         }
+        notifyListeners(); // Wajib dipanggil agar rebuild widget segera
       }
     } else {
+      // Logika untuk Audio (tetap sama)
       if (_isPlaying) {
         _audioPlayer.pause();
+        // Jangan set false di sini, biarkan listener yang menghandle agar sinkron
       } else {
         _audioPlayer.play();
+        // Jangan set true di sini
       }
+      // Untuk audio biasanya tidak perlu notifyListeners manual karena listener cukup cepat
     }
-    notifyListeners();
   }
 
   void hidePlayer() {
@@ -687,7 +699,8 @@ class PlayerProvider extends ChangeNotifier {
       _videoController = VideoPlayerController.file(File(path));
       await _videoController!.initialize();
 
-      _duration = _videoController!.value.duration;
+      // PERBAIKAN WARNING: Ganti if null dengan ??=
+      _duration ??= _videoController!.value.duration;
 
       _chewieController = ChewieController(
         videoPlayerController: _videoController!,
@@ -703,7 +716,8 @@ class PlayerProvider extends ChangeNotifier {
 
       _videoController!.addListener(() {
         if (_isPlayingVideo) {
-          if (_duration == null) _duration = _videoController!.value.duration;
+          // PERBAIKAN WARNING: Ganti if null dengan ??=
+          _duration ??= _videoController!.value.duration;
           _position = _videoController!.value.position;
           notifyListeners();
         }
