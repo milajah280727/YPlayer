@@ -1,17 +1,16 @@
 import 'package:audio_service/audio_service.dart';
-import 'package:flutter/material.dart';
 import 'package:just_audio/just_audio.dart';
 
-// Pindahkan enum ke luar class agar bisa diakses dari mana saja
+// Pindahkan enum ke luar class
 enum RepeatMode { off, one, all }
 
 class AudioPlayerHandler extends BaseAudioHandler with SeekHandler {
   final AudioPlayer _player = AudioPlayer();
-
+  
   // State untuk kontrol tambahan
   RepeatMode _repeatMode = RepeatMode.off;
   bool _isShuffled = false;
-  List<MediaItem> _originalQueue = []; // Simpan antrian asli untuk fungsi shuffle
+  List<MediaItem> _originalQueue = [];
 
   // Getters
   RepeatMode get repeatMode => _repeatMode;
@@ -19,8 +18,8 @@ class AudioPlayerHandler extends BaseAudioHandler with SeekHandler {
 
   AudioPlayerHandler() {
     _player.playbackEventStream.map(_transformEvent).pipe(playbackState);
-
-    // Listener untuk autoplay yang memeriksa mode repeat
+    
+    // Listener untuk autoplay otomatis berdasarkan mode repeat
     _player.playerStateStream.listen((state) {
       if (state.processingState == ProcessingState.completed && _repeatMode != RepeatMode.off) {
         skipToNext();
@@ -88,11 +87,10 @@ class AudioPlayerHandler extends BaseAudioHandler with SeekHandler {
   void toggleShuffle() {
     _isShuffled = !_isShuffled;
     if (_isShuffled) {
-      _originalQueue = List.from(queue.value); // Simpan antrian asli sebelum diacak
+      _originalQueue = List.from(queue.value);
       final newQueue = List<MediaItem>.from(queue.value)..shuffle();
       queue.add(newQueue);
     } else {
-      // Kembalikan ke antrian asli
       queue.add(_originalQueue);
     }
     // Perbarui notifikasi
@@ -101,34 +99,23 @@ class AudioPlayerHandler extends BaseAudioHandler with SeekHandler {
     ));
   }
 
-  // Fungsi untuk mengatur antrian dari luar
   void setQueue(List<MediaItem> newQueue) {
-    _originalQueue = List.from(newQueue); // Simpan antrian asli
+    _originalQueue = List.from(newQueue);
     queue.add(newQueue);
   }
 
   @override
   Future<void> playMediaItem(MediaItem mediaItem) async {
-    try {
-      debugPrint("Playing media item: ${mediaItem.title}");
-      
-      // Periksa apakah ini URL atau path file lokal
-      if (mediaItem.id.startsWith('http') || mediaItem.id.startsWith('https')) {
-        await _player.setUrl(mediaItem.id);
-      } else {
-        // Asumsikan ini adalah path file lokal
-        await _player.setFilePath(mediaItem.id);
-      }
-      
-      this.mediaItem.add(mediaItem);
-      await _player.play();
-    } catch (e) {
-      debugPrint("Error playing media item: $e");
-    }
+    // Kita gunakan id sebagai URL
+    await _player.setUrl(mediaItem.id);
+    this.mediaItem.add(mediaItem);
+    await _player.play();
   }
 
+  // --- INI ADALAH KUNCI MENGAPA TOMBOL MUNCUL ---
   PlaybackState _transformEvent(PlaybackEvent event) {
     return PlaybackState(
+      // DEFINISIKAN TOMBOL TOMBOL DISINI
       controls: [
         MediaControl.skipToPrevious,
         MediaControl.rewind,

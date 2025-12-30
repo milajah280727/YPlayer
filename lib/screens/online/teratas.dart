@@ -19,6 +19,7 @@ class TeratasPageOnline extends StatefulWidget {
 class _TeratasPageOnlineState extends State<TeratasPageOnline>
     with AutomaticKeepAliveClientMixin {
   
+  // ==================== METODE DOWNLOAD AUDIO (SAMA SEPERTI BERANDA) ====================
   Future<void> _downloadAudio(
     String videoId,
     String title,
@@ -34,7 +35,7 @@ class _TeratasPageOnlineState extends State<TeratasPageOnline>
       return;
     }
 
-    DownloadService.sanitizeFileName(title);
+    final sanitizedTitle = DownloadService.sanitizeFileName(title);
 
     // Ganti showDialog dengan ini:
     DownloadProgressSnackBar.show(
@@ -51,7 +52,7 @@ class _TeratasPageOnlineState extends State<TeratasPageOnline>
         if (filePath != null && mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('Audio berhasil diunduh: ${title}.mp3'),
+              content: Text('Audio berhasil diunduh: ${sanitizedTitle}.mp3'),
               backgroundColor: Colors.green,
             ),
           );
@@ -69,7 +70,9 @@ class _TeratasPageOnlineState extends State<TeratasPageOnline>
       },
     );
   }
+  // ======================================================================
 
+  // ==================== METODE DOWNLOAD VIDEO (SAMA SEPERTI BERANDA) ====================
   Future<void> _downloadVideo(
     String videoId,
     String title,
@@ -121,9 +124,10 @@ class _TeratasPageOnlineState extends State<TeratasPageOnline>
               ),
               onComplete: (filePath) {
                 if (filePath != null && mounted) {
+                  final sanitizedTitle = DownloadService.sanitizeFileName(title);
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
-                      content: Text('Video berhasil diunduh: ${title}.mp4'),
+                      content: Text('Video berhasil diunduh: ${sanitizedTitle}.mp4'),
                       backgroundColor: Colors.green,
                     ),
                   );
@@ -155,23 +159,35 @@ class _TeratasPageOnlineState extends State<TeratasPageOnline>
       }
     }
   }
-  void _showDownloadOptions(String videoId, String title, String channel, String thumbnailUrl) {
+  // ======================================================================
+
+  // ==================== METODE SHOW DOWNLOAD OPTIONS ====================
+  void _showDownloadOptions(
+    String videoId,
+    String title,
+    String channel,
+    String thumbnailUrl,
+  ) {
     showModalBottomSheet(
       context: context,
+      backgroundColor: const Color(0xFF1E1E1E),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
       builder: (context) => Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           ListTile(
-            leading: const Icon(Icons.audiotrack),
-            title: const Text('Unduh Audio'),
+            leading: const Icon(Icons.audiotrack, color: Colors.pink),
+            title: const Text('Unduh Audio', style: TextStyle(color: Colors.white)),
             onTap: () {
               Navigator.pop(context);
               _downloadAudio(videoId, title, channel, thumbnailUrl);
             },
           ),
           ListTile(
-            leading: const Icon(Icons.videocam),
-            title: const Text('Unduh Video'),
+            leading: const Icon(Icons.videocam, color: Colors.pink),
+            title: const Text('Unduh Video', style: TextStyle(color: Colors.white)),
             onTap: () {
               Navigator.pop(context);
               _downloadVideo(videoId, title, channel, thumbnailUrl);
@@ -182,6 +198,7 @@ class _TeratasPageOnlineState extends State<TeratasPageOnline>
       ),
     );
   }
+  // ======================================================================
 
   @override
   Widget build(BuildContext context) {
@@ -233,48 +250,38 @@ class _TeratasPageOnlineState extends State<TeratasPageOnline>
                         song['title'],
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w500),
                       ),
-                      subtitle: Text(
-                        song['channel'],
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      trailing: PopupMenuButton<String>(
-                        icon: const Icon(Icons.more_vert),
-                        onSelected: (value) {
-                          if (value == 'play') {
-                            playerProvider.playMusic(
-                              videoId: song['id'],
-                              title: song['title'],
-                              channel: song['channel'],
-                            );
-                          } else if (value == 'download') {
-                            _showDownloadOptions(song['id'], song['title'], song['channel'], song['thumbnail']);
-                          }
-                        },
-                        itemBuilder: (context) => [
-                          const PopupMenuItem(
-                            value: 'play',
-                            child: Row(
-                              children: [
-                                Icon(Icons.play_circle),
-                                SizedBox(width: 8),
-                                Text('Putar'),
-                              ],
-                            ),
+                      // ==================== PERUBAHAN: SUBTITLE ====================
+                      subtitle: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            song['channel'],
+                            style: const TextStyle(color: Colors.grey, fontSize: 12),
+                            overflow: TextOverflow.ellipsis,
+                            maxLines: 1,
                           ),
-                          const PopupMenuItem(
-                            value: 'download',
-                            child: Row(
-                              children: [
-                                Icon(Icons.download),
-                                SizedBox(width: 8),
-                                Text('Unduh'),
-                              ],
-                            ),
+                          const SizedBox(height: 2),
+                          Text(
+                            song['durationText'] ?? 'Live',
+                            style: const TextStyle(color: Colors.white70, fontSize: 11),
                           ),
                         ],
                       ),
+                      // ==========================================================
+                      // ==================== PERUBAHAN: MENU ====================
+                      trailing: IconButton(
+                        icon: const Icon(Icons.more_vert, color: Colors.grey),
+                        onPressed: () => _showDownloadOptions(
+                              song['id'],
+                              song['title'],
+                              song['channel'],
+                              song['thumbnail'],
+                            ),
+                      ),
+                      // ==========================================================
                     );
                   },
                 ),

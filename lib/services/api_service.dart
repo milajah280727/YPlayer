@@ -1,6 +1,6 @@
 class ApiService {
   // Url API
-  static const String _baseUrl = 'https://rate-independently-rings-urge.trycloudflare.com';
+  static const String _baseUrl = 'https://output-columns-jet-portable.trycloudflare.com';
 
   //Endpoint get format
 

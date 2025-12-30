@@ -3,7 +3,7 @@ import 'package:miniplayer/miniplayer.dart';
 import 'package:provider/provider.dart';
 import 'package:video_player/video_player.dart';
 import '../providers/player_provider.dart';
-import 'dart:io'; // <--- Tambahkan ini
+import 'dart:io';
 
 class MiniPlayerWidget extends StatelessWidget {
   const MiniPlayerWidget({super.key});
@@ -31,29 +31,66 @@ class MiniPlayerWidget extends StatelessWidget {
     );
   }
 
+  // PERBAIKAN: Widget Konfirmasi Download
+  void _showDownloadConfirmationDialog({
+    required BuildContext context,
+    required PlayerProvider player,
+    required String type, // 'Audio' atau 'Video'
+    required VoidCallback onConfirm,
+  }) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        
+        title: Text(
+          'Konfirmasi Download',
+          style: const TextStyle(color: Colors.white),
+        ),
+        content: Text(
+          'Apakah Anda yakin ingin mengunduh "${player.currentTitle ?? ''} ($type)"?',
+          style: const TextStyle(color: Colors.white70),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Batal', style: TextStyle(color: Colors.white70)),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              onConfirm(); // Eksekusi fungsi download
+            },
+            child: const Text('Unduh', style: TextStyle(color: Color.fromARGB(255, 31, 255, 11))),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildMiniPlayer(BuildContext context, PlayerProvider player) {
     return Container(
       color: const Color.fromARGB(255, 43, 41, 41),
       child: Column(
         children: [
-          LinearProgressIndicator(
-            value: player.duration != null && player.duration!.inSeconds > 0
-                ? player.position.inSeconds / player.duration!.inSeconds
-                : 0.0,
-            backgroundColor: Colors.grey[700],
-            valueColor: const AlwaysStoppedAnimation<Color>(Colors.pink),
+          ValueListenableBuilder<Duration>(
+            valueListenable: player.positionNotifier,
+            builder: (context, position, child) {
+              return LinearProgressIndicator(
+                value: player.duration != null && player.duration!.inSeconds > 0
+                    ? position.inSeconds / player.duration!.inSeconds
+                    : 0.0,
+                backgroundColor: Colors.grey[700],
+                valueColor: const AlwaysStoppedAnimation<Color>(Colors.pink),
+              );
+            },
           ),
           Expanded(
             child: Padding(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 8.0,
-                vertical: 4,
-              ),
+              padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4),
               child: Row(
                 children: [
                   ClipRRect(
                     borderRadius: BorderRadius.circular(4),
-                    // Ukuran Mini Player 50x50
                     child: SizedBox(
                       width: 70,
                       height: 50,
@@ -87,38 +124,23 @@ class MiniPlayerWidget extends StatelessWidget {
                       ],
                     ),
                   ),
-                  // Tombol Switch ke Video
-                  if (!player.isPlayingVideo)
-                    IconButton(
-                      icon: const Icon(
-                        Icons.video_library_outlined,
-                        color: Colors.white,
-                        size: 24,
-                      ),
-                      onPressed: () => player.switchToVideo(),
-                      tooltip: 'Tampilkan Video',
-                    ),
-                  // Tombol Play/Pause
+                  
+                  // === GANTI TOMBOL DI BAGIAN KANAN MINI PLAYER ===
+                  
+                  // Tombol 1: Download Audio (Menggantikan "Switch to Video")
+                  
+
+                  // Tombol 2: Play/Pause
                   IconButton(
                     icon: Icon(
-                      player.isPlaying
-                          ? Icons.pause_circle_filled
-                          : Icons.play_circle_filled,
+                      player.isPlaying ? Icons.pause_circle_filled : Icons.play_circle_filled,
                       color: player.isLoadingNewSong ? Colors.grey : Colors.white,
                       size: 28,
                     ),
-                    onPressed: player.isLoadingNewSong
-                        ? null
-                        : player.togglePlayPause,
+                    onPressed: player.isLoadingNewSong ? null : player.togglePlayPause,
                   ),
-                  IconButton(
-                    icon: const Icon(
-                      Icons.skip_next,
-                      color: Colors.white,
-                      size: 28,
-                    ),
-                    onPressed: player.skipToNext,
-                  ),
+                  
+                  // =========================================================
                 ],
               ),
             ),
@@ -142,6 +164,7 @@ class MiniPlayerWidget extends StatelessWidget {
       ),
     );
   }
+
   Widget _buildAudioPlayerView(BuildContext context, PlayerProvider player) {
     return Stack(
       children: [
@@ -154,19 +177,12 @@ class MiniPlayerWidget extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   IconButton(
-                    icon: const Icon(
-                      Icons.keyboard_arrow_down,
-                      color: Colors.white,
-                    ),
-                    onPressed: () => player.miniController.animateToHeight(
-                      state: PanelState.MIN,
-                    ),
+                    icon: const Icon(Icons.keyboard_arrow_down, color: Colors.white),
+                    onPressed: () => player.miniController.animateToHeight(state: PanelState.MIN),
                   ),
-                  const Text(
-                    'Sedang Diputar',
-                    style: TextStyle(color: Colors.grey),
-                  ),
-                  _buildMoreOptionsMenu(context, player),
+                  const Text('Sedang Diputar', style: TextStyle(color: Colors.grey)),
+                  // MENU OPSI DIHAPUS SESUAI PERMINTA
+                  // _buildMoreOptionsMenu(context, player),
                 ],
               ),
               Expanded(
@@ -174,11 +190,9 @@ class MiniPlayerWidget extends StatelessWidget {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    
                     ClipRRect(
                       borderRadius: BorderRadius.circular(12),
                       child: SizedBox(
-                        // PERUBAHAN: Jika Video lebar 400, jika Audio kotak 250
                         width: player.isPlayingVideo ? 400 : 250,
                         height: 250, 
                         child: _buildVisualContent(player),
@@ -187,11 +201,7 @@ class MiniPlayerWidget extends StatelessWidget {
                     const SizedBox(height: 10),
                     Text(
                       player.currentTitle ?? 'Loading...',
-                      style: const TextStyle(
-                        fontSize: 22,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                      ),
+                      style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.white),
                       textAlign: TextAlign.center,
                     ),
                     const SizedBox(height: 8),
@@ -208,7 +218,7 @@ class MiniPlayerWidget extends StatelessWidget {
                   children: [
                     _buildProgressBarWithTimestamp(context, player),
                     const SizedBox(height: 16),
-                    _buildPlaybackControls(player),
+                    _buildPlaybackControls(context, player),
                     const SizedBox(height: 16),
                     const SizedBox(height: 10),
                   ],
@@ -217,23 +227,20 @@ class MiniPlayerWidget extends StatelessWidget {
             ],
           ),
         ),
-        
       ],
     );
   }
 
-  // --- WIDGET VISUAL KONTEN ---
   Widget _buildVisualContent(PlayerProvider player) {
-    // Kondisi 1: Mode Video Aktif dan Siap
     if (player.isPlayingVideo &&
         player.videoController != null &&
         player.videoController!.value.isInitialized) {
       return ClipRRect(
-        borderRadius: BorderRadius.circular(12), // Border Radius
+        borderRadius: BorderRadius.circular(12), 
         child: Container(
-          color: const Color.fromARGB(255, 236, 236, 236), // Background hitam
+          color: const Color.fromARGB(255, 236, 236, 236), 
           child: FittedBox(
-            fit: BoxFit.contain, // Contain agar tidak dicrop, ukuran asli
+            fit: BoxFit.contain, 
             child: SizedBox(
               width: player.videoController!.value.size.width,
               height: player.videoController!.value.size.height,
@@ -244,7 +251,6 @@ class MiniPlayerWidget extends StatelessWidget {
       );
     }
 
-    // Kondisi 2: Loading
     if (player.isLoadingNewSong) {
       return Container(
         color: Colors.grey[900],
@@ -252,211 +258,159 @@ class MiniPlayerWidget extends StatelessWidget {
           child: SizedBox(
             width: 50,
             height: 50,
-            child: CircularProgressIndicator(
-              color: Colors.white,
-              strokeWidth: 4.0,
-            ),
+            child: CircularProgressIndicator(color: Colors.white, strokeWidth: 4.0),
           ),
         ),
       );
     }
 
-    // Kondisi 3: Audio (Thumbnail)
     return Image.network(
       'https://i.ytimg.com/vi/${player.currentVideoId}/hqdefault.jpg',
       fit: BoxFit.cover,
       errorBuilder: (_, __, ___) => Container(
         color: Colors.grey[800],
-        child: const Icon(
-          Icons.music_video,
-          color: Colors.white70,
-        ),
+        child: const Icon(Icons.music_video, color: Colors.white70),
       ),
     );
   }
 
-  Widget _buildMoreOptionsMenu(BuildContext context, PlayerProvider player) {
-    final currentSongId = player.currentVideoId ?? '';
-    final isCurrentFavorite = player.isFavorite(currentSongId);
-
-    return PopupMenuButton<String>(
-      icon: const Icon(Icons.more_vert, color: Colors.white),
-      onSelected: (String value) {
-        switch (value) {
-          case 'add_to_favorites':
-            if (currentSongId.isNotEmpty) {
-              final currentSong = {
-                'id': currentSongId,
-                'title': player.currentTitle ?? 'Unknown Title',
-                'channel': player.currentChannel ?? 'Unknown Channel',
-                'thumbnail': 'https://i.ytimg.com/vi/$currentSongId/hqdefault.jpg',
-              };
-              player.addToFavorites(currentSong);
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Ditambahkan ke Favorit'),
-                  backgroundColor: Colors.green,
-                ),
-              );
-            }
-            break;
-          // --- BARU: Logika Switch Mode ---
-          case 'switch_stream_mode':
-            if (player.isPlayingVideo) {
-              // Jika sedang Video -> Pindah ke Audio
-              player.switchToAudio();
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Mode Audio Aktif'),
-                  backgroundColor: Colors.blueGrey,
-                  duration: Duration(seconds: 2),
-                ),
-              );
-            } else {
-              // Jika sedang Audio -> Pindah ke Video
-              player.switchToVideo();
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Mode Video Aktif'),
-                  backgroundColor: Colors.pink,
-                  duration: Duration(seconds: 2),
-                ),
-              );
-            }
-            break;
-          // ---------------------------------
-        }
-      },
-      itemBuilder: (BuildContext context) => [
-        PopupMenuItem<String>(
-          value: 'add_to_favorites',
-          child: Row(
-            children: [
-              Icon(isCurrentFavorite ? Icons.favorite : Icons.favorite_border, color: Colors.pink),
-              const SizedBox(width: 8),
-              Text(isCurrentFavorite ? 'Hapus dari Favorit' : 'Tambah ke Favorit'),
-            ],
-          ),
-        ),
-        // --- MENU BARU ---
-        PopupMenuItem<String>(
-          value: 'switch_stream_mode',
-          child: Row(
-            children: [
-              // Ikon Dinamis: Jika video aktif, tampilkan icon audio (headphone).
-              // Jika audio aktif, tampilkan icon video (video_library).
-              Icon(
-                player.isPlayingVideo ? Icons.headphones : Icons.video_library,
-                color: Colors.white,
-              ),
-              const SizedBox(width: 8),
-              // Teks Dinamis: "Tampilkan Video" atau "Tampilkan Audio"
-              Text(player.isPlayingVideo ? 'Tampilkan Audio' : 'Tampilkan Video'),
-            ],
-          ),
-        ),
-        // -----------------
-      ],
-    );
-  }
-
   Widget _buildProgressBarWithTimestamp(BuildContext context, PlayerProvider player) {
-    return Column(
-      children: [
-        SliderTheme(
-          data: SliderTheme.of(context).copyWith(
-            thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6),
-            trackHeight: 4.0,
-            activeTrackColor: Colors.red,
-            thumbColor: Colors.white,
-          ),
-          child: Slider(
-            min: 0.0,
-            max: player.duration?.inSeconds.toDouble() ?? 0.0,
-            value: player.position.inSeconds.toDouble().clamp(
-              0.0,
-              player.duration?.inSeconds.toDouble() ?? 0.0,
+    return ValueListenableBuilder<Duration>(
+      valueListenable: player.positionNotifier,
+      builder: (context, position, child) {
+        return Column(
+          children: [
+            SliderTheme(
+              data: SliderTheme.of(context).copyWith(
+                thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6),
+                trackHeight: 4.0,
+                activeTrackColor: Colors.red,
+                thumbColor: Colors.white,
+              ),
+              child: Slider(
+                min: 0.0,
+                max: player.duration?.inSeconds.toDouble() ?? 0.0,
+                value: position.inSeconds.toDouble().clamp(
+                  0.0,
+                  player.duration?.inSeconds.toDouble() ?? 0.0,
+                ),
+                onChanged: (value) {
+                  player.seek(Duration(seconds: value.toInt()));
+                },
+              ),
             ),
-            onChanged: (value) {
-              // PANGGIL FUNGSI SEEK AGAR SLIDER BISA DIGUNAKAN
-              player.seek(Duration(seconds: value.toInt()));
-            },
-          ),
-        ),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16.0),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                _formatDuration(player.position),
-                style: const TextStyle(color: Colors.white, fontSize: 12),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16.0),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    _formatDuration(position),
+                    style: const TextStyle(color: Colors.white, fontSize: 12),
+                  ),
+                  Text(
+                    _formatDuration(player.duration ?? Duration.zero),
+                    style: const TextStyle(color: Colors.white, fontSize: 12),
+                  ),
+                ],
               ),
-              Text(
-                _formatDuration(player.duration ?? Duration.zero),
-                style: const TextStyle(color: Colors.white, fontSize: 12),
-              ),
-            ],
-          ),
-        ),
-      ],
+            ),
+          ],
+        );
+      },
     );
   }
 
-  Widget _buildPlaybackControls(PlayerProvider player) {
+    Widget _buildPlaybackControls(BuildContext context, PlayerProvider player) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
       children: [
-        IconButton(
-          icon: Icon(
-            Icons.shuffle,
-            color: player.isShuffled ? Colors.pink : Colors.grey,
+        // SLOT 1: Switch Mode (Audio/Video)
+        // HANYA MUNCUL JIKA MODE ONLINE
+        if (!player.isLocalPlayback)
+          if (player.isPlayingVideo)
+            IconButton(
+              icon: const Icon(Icons.headphones, color: Colors.white),
+              iconSize: 24,
+              onPressed: () => player.switchToAudio(),
+            )
+          else
+            IconButton(
+              icon: const Icon(Icons.video_library, color: Colors.white),
+              iconSize: 24,
+              onPressed: () => player.switchToVideo(),
+            ),
+
+        // SLOT 2: Download Music
+        // HANYA MUNCUL JIKA MODE ONLINE
+        if (!player.isLocalPlayback)
+          IconButton(
+            icon: const Icon(Icons.audiotrack, color: Colors.white),
+            iconSize: 40,
+            onPressed: () => _showDownloadConfirmationDialog(
+                  context: context,
+                  player: player,
+                  type: 'Audio',
+                  onConfirm: () => player.downloadCurrentAudio(context),
+                ),
+            tooltip: 'Download Music',
           ),
-          iconSize: 24,
-          onPressed: player.toggleShuffle,
-        ),
-        IconButton(
-          icon: const Icon(Icons.skip_previous, color: Colors.white),
-          iconSize: 40,
-          onPressed: player.skipToPrevious,
-        ),
+
+        // SLOT 3: Play/Pause
+        // SELALU MUNCUL (BAIK ONLINE MAUPUN OFFLINE)
         IconButton(
           icon: Icon(
-            player.isPlaying
-                ? Icons.pause_circle_filled
-                : Icons.play_circle_filled,
+            player.isPlaying ? Icons.pause_circle_filled : Icons.play_circle_filled,
             color: player.isLoadingNewSong ? Colors.grey : Colors.white,
           ),
           iconSize: 64,
-          onPressed: player.isLoadingNewSong
-              ? null
-              : player.togglePlayPause,
+          onPressed: player.isLoadingNewSong ? null : player.togglePlayPause,
         ),
-        IconButton(
-          icon: const Icon(Icons.skip_next, color: Colors.white),
-          iconSize: 40,
-          onPressed: player.skipToNext,
-        ),
-        IconButton(
-          icon: _buildRepeatIcon(player.repeatMode),
-          iconSize: 24,
-          onPressed: player.toggleRepeat,
-        ),
+
+        // SLOT 4: Download Video
+        // HANYA MUNCUL JIKA MODE ONLINE
+        if (!player.isLocalPlayback)
+          IconButton(
+            icon: const Icon(Icons.videocam, color: Colors.white),
+            iconSize: 40,
+            onPressed: () => _showDownloadConfirmationDialog(
+                  context: context,
+                  player: player,
+                  type: 'Video',
+                  onConfirm: () => player.downloadCurrentVideo(context),
+                ),
+            tooltip: 'Download Video',
+          ),
+
+        // SLOT 5: Add to Favorites
+        // HANYA MUNCUL JIKA MODE ONLINE
+        if (!player.isLocalPlayback)
+          IconButton(
+            icon: Icon(
+              player.isFavorite(player.currentVideoId ?? '') ? Icons.favorite : Icons.favorite_border,
+              color: player.isFavorite(player.currentVideoId ?? '') ? Colors.pink : Colors.grey,
+            ),
+            iconSize: 24,
+            onPressed: () {
+              if (player.currentVideoId != null) {
+                final currentSong = {
+                  'id': player.currentVideoId!,
+                  'title': player.currentTitle ?? 'Unknown Title',
+                  'channel': player.currentChannel ?? 'Unknown Channel',
+                  'thumbnail': 'https://i.ytimg.com/vi/${player.currentVideoId}/hqdefault.jpg',
+                };
+                if (player.isFavorite(player.currentVideoId!)) {
+                  player.removeFromFavorites(player.currentVideoId!);
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Dihapus dari Favorit')));
+                } else {
+                  player.addToFavorites(currentSong);
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Ditambahkan ke Favorit'), backgroundColor: Colors.green));
+                }
+              }
+            },
+          ),
       ],
     );
-  }
-
-
-
-  Widget _buildRepeatIcon(RepeatMode mode) {
-    switch (mode) {
-      case RepeatMode.off:
-        return const Icon(Icons.repeat, color: Colors.grey);
-      case RepeatMode.all:
-        return const Icon(Icons.repeat, color: Colors.pink);
-      case RepeatMode.one:
-        return const Icon(Icons.repeat_one, color: Colors.pink);
-    }
   }
 
   String _formatDuration(Duration duration) {
@@ -465,6 +419,4 @@ class MiniPlayerWidget extends StatelessWidget {
     String twoDigitSeconds = twoDigits(duration.inSeconds.remainder(60));
     return "${twoDigits(duration.inHours)}:$twoDigitMinutes:$twoDigitSeconds";
   }
-
-  
 }

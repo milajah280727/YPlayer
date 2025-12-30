@@ -18,7 +18,8 @@ class FavoritPageOnline extends StatefulWidget {
 
 class _FavoritPageOnlineState extends State<FavoritPageOnline>
     with AutomaticKeepAliveClientMixin {
-  
+
+  // ==================== METODE DOWNLOAD AUDIO ====================
   Future<void> _downloadAudio(
     String videoId,
     String title,
@@ -36,7 +37,6 @@ class _FavoritPageOnlineState extends State<FavoritPageOnline>
 
     final sanitizedTitle = DownloadService.sanitizeFileName(title);
 
-    // Ganti showDialog dengan ini:
     DownloadProgressSnackBar.show(
       context,
       title: 'Mengunduh Audio: $title',
@@ -69,7 +69,9 @@ class _FavoritPageOnlineState extends State<FavoritPageOnline>
       },
     );
   }
+  // ======================================================================
 
+  // ==================== METODE DOWNLOAD VIDEO ====================
   Future<void> _downloadVideo(
     String videoId,
     String title,
@@ -98,14 +100,49 @@ class _FavoritPageOnlineState extends State<FavoritPageOnline>
         return;
       }
 
+      // Tampilkan dialog pilihan kualitas
       showDialog(
         context: context,
-        builder: (context) => VideoQualityDialog(
+        builder: (dialogContext) => VideoQualityDialog(
           formats: resolutions,
           onQualitySelected: (formatId) {
-            final sanitizedTitle = DownloadService.sanitizeFileName(title);
+            // Tutup dialog kualitas
+            Navigator.pop(dialogContext);
 
-            DownloadService.downloadAudio;
+            // Tampilkan progress download video
+            final sanitizedTitle = DownloadService.sanitizeFileName(title);
+            DownloadProgressSnackBar.show(
+              context,
+              title: 'Mengunduh Video: $title',
+              downloadFunction: (onProgress) => DownloadService.downloadVideo(
+                videoId,
+                sanitizedTitle, // Gunakan title yang sudah disanitasi
+                channel,
+                thumbnailUrl,
+                formatId,
+                onProgress,
+              ),
+              onComplete: (filePath) {
+                if (filePath != null && mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Video berhasil diunduh: ${sanitizedTitle}.mp4'),
+                      backgroundColor: Colors.green,
+                    ),
+                  );
+                }
+              },
+              onError: (error) {
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Gagal mengunduh video: $error'),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                }
+              },
+            );
           },
         ),
       );
@@ -114,31 +151,42 @@ class _FavoritPageOnlineState extends State<FavoritPageOnline>
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Gagal mengunduh video'),
+            content: Text('Gagal memuat format video'),
             backgroundColor: Colors.red,
           ),
         );
       }
     }
   }
+  // ======================================================================
 
-  void _showDownloadOptions(String videoId, String title, String channel, String thumbnailUrl) {
+  // ==================== METODE SHOW DOWNLOAD OPTIONS ====================
+  void _showDownloadOptions(
+    String videoId,
+    String title,
+    String channel,
+    String thumbnailUrl,
+  ) {
     showModalBottomSheet(
       context: context,
+      backgroundColor: const Color(0xFF1E1E1E),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
       builder: (context) => Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           ListTile(
-            leading: const Icon(Icons.audiotrack),
-            title: const Text('Unduh Audio'),
+            leading: const Icon(Icons.audiotrack, color: Colors.pink),
+            title: const Text('Unduh Audio', style: TextStyle(color: Colors.white)),
             onTap: () {
               Navigator.pop(context);
               _downloadAudio(videoId, title, channel, thumbnailUrl);
             },
           ),
           ListTile(
-            leading: const Icon(Icons.videocam),
-            title: const Text('Unduh Video'),
+            leading: const Icon(Icons.videocam, color: Colors.pink),
+            title: const Text('Unduh Video', style: TextStyle(color: Colors.white)),
             onTap: () {
               Navigator.pop(context);
               _downloadVideo(videoId, title, channel, thumbnailUrl);
@@ -149,11 +197,12 @@ class _FavoritPageOnlineState extends State<FavoritPageOnline>
       ),
     );
   }
+  // ======================================================================
 
   @override
   Widget build(BuildContext context) {
     super.build(context);
-    
+
     return Consumer<PlayerProvider>(
       builder: (context, playerProvider, child) {
         final favoriteSongs = playerProvider.favorites;
@@ -200,69 +249,37 @@ class _FavoritPageOnlineState extends State<FavoritPageOnline>
                         song['title'],
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w500),
                       ),
-                      subtitle: Text(
-                        song['channel'],
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      trailing: PopupMenuButton<String>(
-                        icon: const Icon(Icons.more_vert),
-                        onSelected: (value) {
-                          switch (value) {
-                            case 'play':
-                              playerProvider.playMusic(
-                                videoId: song['id'],
-                                title: song['title'],
-                                channel: song['channel'],
-                              );
-                              break;
-                            case 'download':
-                              _showDownloadOptions(song['id'], song['title'], song['channel'], song['thumbnail']);
-                              break;
-                            case 'remove_favorite':
-                              playerProvider.removeFromFavorites(song['id']);
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text('Dihapus dari favorit'),
-                                  backgroundColor: Colors.red,
-                                ),
-                              );
-                              break;
-                          }
-                        },
-                        itemBuilder: (context) => [
-                          const PopupMenuItem(
-                            value: 'play',
-                            child: Row(
-                              children: [
-                                Icon(Icons.play_circle),
-                                SizedBox(width: 8),
-                                Text('Putar'),
-                              ],
-                            ),
+                      // ==================== PERUBAHAN: SUBTITLE ====================
+                      subtitle: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            song['channel'],
+                            style: const TextStyle(color: Colors.grey, fontSize: 12),
+                            overflow: TextOverflow.ellipsis,
+                            maxLines: 1,
                           ),
-                          const PopupMenuItem(
-                            value: 'download',
-                            child: Row(
-                              children: [
-                                Icon(Icons.download),
-                                SizedBox(width: 8),
-                                Text('Unduh'),
-                              ],
-                            ),
-                          ),
-                          const PopupMenuItem(
-                            value: 'remove_favorite',
-                            child: Row(
-                              children: [
-                                Icon(Icons.favorite_border, color: Colors.pink),
-                                SizedBox(width: 8),
-                                Text('Hapus dari Favorit'),
-                              ],
-                            ),
+                          const SizedBox(height: 2),
+                          Text(
+                            song['durationText'] ?? 'Live',
+                            style: const TextStyle(color: Colors.white70, fontSize: 11),
                           ),
                         ],
+                      ),
+                      // ==========================================================
+                      trailing: IconButton(
+                        // ==================== PERUBAHAN: Tombol 3 Titik ====================
+                        icon: const Icon(Icons.more_vert, color: Colors.grey),
+                        onPressed: () => _showDownloadOptions(
+                              song['id'],
+                              song['title'],
+                              song['channel'],
+                              song['thumbnail'],
+                            ),
+                        // ==========================================================
                       ),
                     );
                   },
@@ -271,7 +288,7 @@ class _FavoritPageOnlineState extends State<FavoritPageOnline>
       },
     );
   }
-  
+
   @override
   bool get wantKeepAlive => true;
 }

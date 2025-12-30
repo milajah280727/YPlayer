@@ -8,7 +8,7 @@ import 'local_media_service.dart';
 
 class DownloadService {
   static const String _baseUrl =
-      'https://rate-independently-rings-urge.trycloudflare.com';
+      'https://output-columns-jet-portable.trycloudflare.com';
 
   // ================= PERBAIKAN KRUSIAL =================
   // 1. Hapus 'late' agar error LateInitializationError tidak muncul.

@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:yplayer/app_theme.dart';
 import 'package:yplayer/main.dart';
 import 'package:yplayer/screens/offline/beranda.dart';
-import 'package:yplayer/screens/offline/playlist_page_offline.dart';
 import 'package:yplayer/widgets/mini_player_widget.dart';
 
 void main() {
@@ -147,7 +146,7 @@ class _HalamanUtamaOfflineState extends State<HalamanUtamaOffline>
   Widget _buildCustomAppBar(BuildContext context, EdgeInsets padding) {
     return Container(
       decoration: BoxDecoration(
-        color: const Color.fromARGB(255, 108, 107, 107).withValues(alpha: 0.1),
+        color: const Color.fromARGB(255, 105, 105, 105),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.1),

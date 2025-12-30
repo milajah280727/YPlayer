@@ -10,16 +10,13 @@ import 'package:yplayer/screens/online/musik.dart';
 import 'package:yplayer/screens/online/teratas.dart';
 import 'package:yplayer/screens/search/search_page.dart';
 import 'package:yplayer/services/audio_player_service.dart';
-import 'package:yplayer/services/download_service.dart';
 import 'package:yplayer/widgets/mini_player_widget.dart';
 import 'package:yplayer/main_offline.dart';
 
-// 1. Jalankan App() langsung, tidak ada await di sini
 void main() {
   runApp(const App());
 }
 
-// 2. App Widget menangani inisialisasi AudioService
 class App extends StatefulWidget {
   const App({super.key});
 
@@ -28,20 +25,16 @@ class App extends StatefulWidget {
 }
 
 class _AppState extends State<App> {
-  // Variabel untuk menyimpan proses async
   late Future<AudioPlayerHandler> _initAudioServiceFuture;
-  // Simpan handler untuk diakses saat dispose
   AudioPlayerHandler? _audioHandler;
 
   @override
   void initState() {
     super.initState();
-    // Inisialisasi AudioService tapi tidak memblokir UI
     _initAudioServiceFuture = _initAudioService();
   }
 
   Future<AudioPlayerHandler> _initAudioService() async {
-    // PERBAIKAN 1: Gunakan nama icon 'launcher_icon' sesuai Manifest kamu sebelumnya
     return await AudioService.init(
       builder: () => AudioPlayerHandler(),
       config: const AudioServiceConfig(
@@ -49,15 +42,24 @@ class _AppState extends State<App> {
         androidNotificationChannelName: 'Music Playback',
         androidNotificationOngoing: true,
         androidShowNotificationBadge: true,
-        // Pastikan nama icon ini cocok dengan folder res/mipmap kamu
+        
+        // PENTING: Pastikan nama icon cocok dengan folder res/mipmap
         androidNotificationIcon: 'mipmap/launcher_icon', 
+        
+        // PENTING: Set true agar notifikasi TIDAK HILANG saat lagu dipause
+        // Sehingga navigasi tetap bisa digunakan
+        androidStopForegroundOnPause: true,
+        
+        // Interval untuk tombol FF/Rewind di notifikasi
+        fastForwardInterval: Duration(seconds: 10),
+        rewindInterval: Duration(seconds: 10),
       ),
     );
   }
 
   @override
   void dispose() {
-    _audioHandler?.stop(); // Hentikan handler saat app ditutup
+    _audioHandler?.stop();
     super.dispose();
   }
 
@@ -66,7 +68,6 @@ class _AppState extends State<App> {
     return FutureBuilder<AudioPlayerHandler>(
       future: _initAudioServiceFuture,
       builder: (context, snapshot) {
-        // Tampilkan Loading Screen saat menunggu
         if (snapshot.connectionState == ConnectionState.waiting) {
           return MaterialApp(
             debugShowCheckedModeBanner: false,
@@ -78,10 +79,7 @@ class _AppState extends State<App> {
                   children: const [
                     CircularProgressIndicator(color: Colors.pink),
                     SizedBox(height: 20),
-                    Text(
-                      "Menyiapkan Audio...",
-                      style: TextStyle(color: Colors.white, fontSize: 16),
-                    ),
+                    Text("Menyiapkan Audio...", style: TextStyle(color: Colors.white, fontSize: 16)),
                   ],
                 ),
               ),
@@ -89,18 +87,14 @@ class _AppState extends State<App> {
           );
         }
 
-        // Jika Error
         if (snapshot.hasError) {
           return MaterialApp(
             home: Scaffold(
-              body: Center(
-                child: Text('Error: ${snapshot.error}'),
-              ),
+              body: Center(child: Text('Error: ${snapshot.error}')),
             ),
           );
         }
 
-        // Jika Sukses, Jalankan Aplikasi Utama dengan Provider
         _audioHandler = snapshot.data!;
 
         return MultiProvider(
@@ -125,7 +119,6 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'YPlayer',
-      // Pastikan AppTheme.darkTheme sudah terdefinisi di file app_theme.dart
       theme: AppTheme.darkTheme,
       home: const HalamanUtama(),
     );
@@ -167,7 +160,6 @@ class _HalamanUtamaState extends State<HalamanUtama>
 
     return Scaffold(
       key: _scaffoldKey,
-      // Menggunakan withValues(alpha: ...) untuk menghindari warning deprecated
       backgroundColor: Colors.white.withValues(alpha: 0.3),
       drawer: _buildDrawer(context),
       body: Stack(

@@ -31,7 +31,7 @@ class _SearchPageResultState extends State<SearchPageResult>
     });
   }
 
-  // --- FUNGSI UNDUHAN (SAMA SEPERTI HALAMAN LAIN) ---
+  // ==================== METODE DOWNLOAD AUDIO (SAMA SEPERTI BERANDA) ====================
   Future<void> _downloadAudio(
     String videoId,
     String title,
@@ -49,7 +49,6 @@ class _SearchPageResultState extends State<SearchPageResult>
 
     final sanitizedTitle = DownloadService.sanitizeFileName(title);
 
-    // Ganti showDialog dengan ini:
     DownloadProgressSnackBar.show(
       context,
       title: 'Mengunduh Audio: $title',
@@ -65,7 +64,7 @@ class _SearchPageResultState extends State<SearchPageResult>
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               // ignore: unnecessary_brace_in_string_interps
-              content: Text('Audio berhasil diunduh: ${title}.mp3'),
+              content: Text('Audio berhasil diunduh: ${sanitizedTitle}.mp3'),
               backgroundColor: Colors.green,
             ),
           );
@@ -83,7 +82,9 @@ class _SearchPageResultState extends State<SearchPageResult>
       },
     );
   }
+  // ======================================================================
 
+  // ==================== METODE DOWNLOAD VIDEO (SAMA SEPERTI BERANDA) ====================
   Future<void> _downloadVideo(
     String videoId,
     String title,
@@ -114,12 +115,45 @@ class _SearchPageResultState extends State<SearchPageResult>
 
       showDialog(
         context: context,
-        builder: (context) => VideoQualityDialog(
+        builder: (dialogContext) => VideoQualityDialog(
           formats: resolutions,
           onQualitySelected: (formatId) {
-            final sanitizedTitle = DownloadService.sanitizeFileName(title);
+            // Tutup dialog kualitas
+            Navigator.pop(dialogContext);
 
-            DownloadService.downloadAudio;
+            final sanitizedTitle = DownloadService.sanitizeFileName(title);
+            DownloadProgressSnackBar.show(
+              context, // Context halaman
+              title: 'Mengunduh Video: $title',
+              downloadFunction: (onProgress) => DownloadService.downloadVideo(
+                videoId,
+                sanitizedTitle,
+                channel,
+                thumbnailUrl,
+                formatId,
+                onProgress,
+              ),
+              onComplete: (filePath) {
+                if (filePath != null && mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Video berhasil diunduh: ${sanitizedTitle}.mp4'),
+                      backgroundColor: Colors.green,
+                    ),
+                  );
+                }
+              },
+              onError: (error) {
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Gagal mengunduh video: $error'),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                }
+              },
+            );
           },
         ),
       );
@@ -128,18 +162,28 @@ class _SearchPageResultState extends State<SearchPageResult>
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Gagal mengunduh video'),
+            content: Text('Gagal memuat format video'),
             backgroundColor: Colors.red,
           ),
         );
       }
     }
   }
+  // ======================================================================
 
-  void _showDownloadOptions(String videoId, String title, String channel, String thumbnailUrl) {
+  // ==================== METODE SHOW DOWNLOAD OPTIONS ====================
+  void _showDownloadOptions(
+    String videoId,
+    String title,
+    String channel,
+    String thumbnailUrl,
+  ) {
     showModalBottomSheet(
       context: context,
       backgroundColor: const Color(0xFF1E1E1E),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
       builder: (context) => Column(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -164,7 +208,7 @@ class _SearchPageResultState extends State<SearchPageResult>
       ),
     );
   }
-  // --- AKHIR FUNGSI UNDUHAN ---
+  // --- AKHIR FUNGSI DOWNLOAD ---
 
   @override
   Widget build(BuildContext context) {
@@ -194,7 +238,7 @@ class _SearchPageResultState extends State<SearchPageResult>
                       padding: EdgeInsets.only(bottom: padding.bottom + 70), // Tambahkan padding untuk mini player
                       itemCount: searchProvider.videos.length,
                       itemBuilder: (context, index) {
-                        final video = searchProvider.videos[index]; // Asumsikan ini adalah Map
+                        final video = searchProvider.videos[index];
                         return Container(
                           margin: const EdgeInsets.symmetric(horizontal: 0, vertical: 0),
                           
@@ -202,7 +246,7 @@ class _SearchPageResultState extends State<SearchPageResult>
                             leading: ClipRRect(
                               borderRadius: BorderRadius.circular(4),
                               child: Image.network(
-                                video['thumbnail'], // Asumsikan ini adalah Map
+                                video['thumbnail'],
                                 width: 100,
                                 height: 70,
                                 fit: BoxFit.cover,
@@ -215,58 +259,50 @@ class _SearchPageResultState extends State<SearchPageResult>
                               ),
                             ),
                             title: Text(
-                              video['title'], // Asumsikan ini adalah Map
+                              video['title'],
                               maxLines: 2,
                               overflow: TextOverflow.ellipsis,
                               style: const TextStyle(color: Colors.white),
                             ),
-                            subtitle: Text(
-                              video['channel'], // Asumsikan ini adalah Map
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(color: Colors.white70),
-                            ),
-                            onTap: () {
-                              // Mainkan musik saat video dipilih
-                              Provider.of<PlayerProvider>(context, listen: false).playMusic(
-                                videoId: video['id'], // Asumsikan ini adalah Map
-                                title: video['title'], // Asumsikan ini adalah Map
-                                channel: video['channel'], // Asumsikan ini adalah Map
-                              );
-                            },
-                            trailing: PopupMenuButton<String>(
-                              icon: const Icon(Icons.more_vert, color: Colors.white70),
-                              color: const Color(0xFF1E1E1E),
-                              onSelected: (value) {
-                                if (value == 'play') {
-                                  Provider.of<PlayerProvider>(context, listen: false).playMusic(
-                                    videoId: video['id'], // Asumsikan ini adalah Map
-                                    title: video['title'], // Asumsikan ini adalah Map
-                                    channel: video['channel'], // Asumsikan ini adalah Map
-                                  );
-                                } else if (value == 'download') {
-                                  _showDownloadOptions(video['id'], video['title'], video['channel'], video['thumbnail']); // Asumsikan ini adalah Map
-                                }
-                              },
-                              itemBuilder: (context) => [
-                                const PopupMenuItem(
-                                  value: 'play',
-                                  child: Row(children: [
-                                    Icon(Icons.play_circle, color: Colors.pink),
-                                    SizedBox(width: 8),
-                                    Text('Putar', style: TextStyle(color: Colors.white))
-                                  ]),
+                            // ==================== PERUBAHAN: SUBTITLE ====================
+                            subtitle: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  video['channel'],
+                                  style: const TextStyle(color: Colors.grey, fontSize: 12),
+                                  overflow: TextOverflow.ellipsis,
+                                  maxLines: 1,
                                 ),
-                                const PopupMenuItem(
-                                  value: 'download',
-                                  child: Row(children: [
-                                    Icon(Icons.download, color: Colors.pink),
-                                    SizedBox(width: 8),
-                                    Text('Unduh', style: TextStyle(color: Colors.white))
-                                  ]),
+                                const SizedBox(height: 2),
+                                Text(
+                                  video['durationText'] ?? 'Live',
+                                  style: const TextStyle(color: Colors.white70, fontSize: 11),
                                 ),
                               ],
                             ),
+                            // ==========================================================
+                            onTap: () {
+                              // Mainkan musik saat video dipilih
+                              Provider.of<PlayerProvider>(context, listen: false).playMusic(
+                                videoId: video['id'],
+                                title: video['title'],
+                                channel: video['channel'],
+                              );
+                            },
+                            // ==================== PERUBAHAN: MENU ====================
+                            trailing: IconButton(
+                              icon: const Icon(Icons.more_vert, color: Colors.white70),
+                              color: const Color(0xFF1E1E1E),
+                              onPressed: () => _showDownloadOptions(
+                                    video['id'],
+                                    video['title'],
+                                    video['channel'],
+                                    video['thumbnail'],
+                              ),
+                            ),
+                            // ==========================================================
                           ),
                         );
                       },
@@ -309,8 +345,8 @@ class _SearchPageResultState extends State<SearchPageResult>
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 IconButton(
-                  icon: const Icon(Icons.arrow_back, color: Colors.white),
-                  onPressed: () => Navigator.pop(context),
+                    icon: const Icon(Icons.arrow_back, color: Colors.white),
+                    onPressed: () => Navigator.pop(context),
                 ),
                 Expanded(
                   child: Text(
@@ -338,9 +374,9 @@ class _SearchPageResultState extends State<SearchPageResult>
             ),
           ],
         ),
-      ),
-    );
-  }
+      )
+      );
+    }
   
   @override
   bool get wantKeepAlive => true;
